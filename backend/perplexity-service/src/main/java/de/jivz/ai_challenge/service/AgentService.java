@@ -2,11 +2,13 @@ package de.jivz.ai_challenge.service;
 
 import de.jivz.ai_challenge.dto.ChatRequest;
 import de.jivz.ai_challenge.dto.ChatResponse;
+import de.jivz.ai_challenge.dto.Message;
 import de.jivz.ai_challenge.service.perplexity.PerplexityToolClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Agent service that handles chat requests.
@@ -17,9 +19,12 @@ import java.time.Instant;
 public class AgentService {
 
     private final PerplexityToolClient perplexityToolClient;
+    private final ConversationHistoryService historyService;
 
-    public AgentService(PerplexityToolClient perplexityToolClient) {
+    public AgentService(PerplexityToolClient perplexityToolClient,
+                       ConversationHistoryService historyService) {
         this.perplexityToolClient = perplexityToolClient;
+        this.historyService = historyService;
     }
 
     /**
@@ -35,8 +40,28 @@ public class AgentService {
             throw new IllegalArgumentException("Message cannot be empty");
         }
 
-        log.debug("Processing request for user: {}", request.getUserId());
-        String reply = perplexityToolClient.requestCompletion(request.getMessage());
+        String conversationId = request.getConversationId();
+        log.debug("Processing request for user: {}, conversationId: {}",
+                 request.getUserId(), conversationId);
+
+        // 1. Load conversation history from storage
+        List<Message> history = historyService.getHistory(conversationId);
+        log.info("📚 Loaded {} previous messages for conversation: {}",
+                history.size(), conversationId);
+
+        // 2. Append new user message to history
+        history.add(new Message("user", request.getMessage()));
+
+        // 3. Send complete message history to Perplexity API
+        String reply = perplexityToolClient.requestCompletion(history);
+
+        // 4. Append assistant response to history
+        history.add(new Message("assistant", reply));
+
+        // 5. Save updated conversation history
+        historyService.saveHistory(conversationId, history);
+        log.info("💾 Saved conversation history ({} messages) for conversationId: {}",
+                history.size(), conversationId);
 
         return new ChatResponse(
                 reply,

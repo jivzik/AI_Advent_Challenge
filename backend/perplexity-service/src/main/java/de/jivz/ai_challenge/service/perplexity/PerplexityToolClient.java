@@ -1,5 +1,6 @@
 package de.jivz.ai_challenge.service.perplexity;
 
+import de.jivz.ai_challenge.dto.Message;
 import de.jivz.ai_challenge.exception.ExternalServiceException;
 import de.jivz.ai_challenge.service.perplexity.model.PerplexityRequest;
 import de.jivz.ai_challenge.service.perplexity.model.PerplexityResponse;
@@ -8,6 +9,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Perplexity API client implementation.
@@ -29,6 +33,43 @@ public class PerplexityToolClient {
     }
 
     /**
+     * Requests a chat completion from Perplexity API with conversation history.
+     *
+     * @param messages the conversation history (list of user and assistant messages)
+     * @return the AI's response
+     * @throws ExternalServiceException if the API call fails
+     */
+    public String requestCompletion(List<Message> messages) {
+        if (messages == null || messages.isEmpty()) {
+            throw new IllegalArgumentException("Messages list cannot be empty");
+        }
+
+        try {
+            // Konvertiere unsere Message-DTOs zu Perplexity-Request-Messages
+            List<PerplexityRequest.Message> perplexityMessages = messages.stream()
+                    .map(msg -> new PerplexityRequest.Message(msg.getRole(), msg.getContent()))
+                    .collect(Collectors.toList());
+
+            // Typsicherer Request mit Builder-Pattern
+            PerplexityRequest request = PerplexityRequest.builder()
+                    .model(model)
+                    .messages(perplexityMessages)
+                    .build();
+
+            log.info("🚀 Calling Perplexity API with model: {} and {} messages",
+                    model, messages.size());
+            log.debug("📝 Conversation history: {} messages", messages.size());
+
+            return executeRequest(request);
+        } catch (ExternalServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("❌ Exception in requestCompletion: {}", e.getMessage(), e);
+            throw new ExternalServiceException("Failed to call Perplexity API: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Requests a chat completion from Perplexity API.
      *
      * @param input the user's message
@@ -37,7 +78,7 @@ public class PerplexityToolClient {
      */
     public String requestCompletion(String input) {
         try {
-            // Typsicherer Request mit Builder-Pattern
+            // Type-safe request with builder pattern
             PerplexityRequest request = PerplexityRequest.builder()
                     .model(model)
                     .addMessage("user", input)
@@ -46,7 +87,24 @@ public class PerplexityToolClient {
             log.info("🚀 Calling Perplexity API with model: {}", model);
             log.debug("📝 User message: {}", input);
 
-            // WebClient mit typsicherer PerplexityResponse
+            return executeRequest(request);
+        } catch (ExternalServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("❌ Exception in requestCompletion: {}", e.getMessage(), e);
+            throw new ExternalServiceException("Failed to call Perplexity API: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Executes the API request to Perplexity.
+     *
+     * @param request the Perplexity request
+     * @return the AI's response
+     */
+    private String executeRequest(PerplexityRequest request) {
+        try {
+            // WebClient with type-safe PerplexityResponse
             PerplexityResponse response = webClient.post()
                     .uri("/chat/completions")
                     .bodyValue(request)
@@ -68,11 +126,11 @@ public class PerplexityToolClient {
                             }
                     )
                     .bodyToMono(PerplexityResponse.class)
-                    .block(); // Blockierend für synchrone Verwendung
+                    .block(); // Blocking for synchronous use
 
             log.info("✅ Received response from Perplexity API");
 
-            // Extrahiere Antwort aus choices[0].message.content (typsicher!)
+            // Extract answer from choices[0].message.content (type-safe!)
             if (response != null && response.getChoices() != null && !response.getChoices().isEmpty()) {
                 PerplexityResponse.Choice firstChoice = response.getChoices().get(0);
                 if (firstChoice.getMessage() != null && firstChoice.getMessage().getContent() != null) {
@@ -94,8 +152,8 @@ public class PerplexityToolClient {
         } catch (ExternalServiceException e) {
             throw e; // Re-throw custom exception
         } catch (Exception e) {
-            log.error("❌ Exception in requestCompletion: {}", e.getMessage(), e);
-            throw new ExternalServiceException("Failed to call Perplexity API: " + e.getMessage(), e);
+            log.error("❌ Exception in executeRequest: {}", e.getMessage(), e);
+            throw new ExternalServiceException("Failed to execute Perplexity API request: " + e.getMessage(), e);
         }
     }
 }

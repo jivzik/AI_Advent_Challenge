@@ -1,8 +1,21 @@
 <template>
   <div class="chat-container">
     <div class="chat-header">
-      <h1>AI Chat Agent</h1>
-      <p>Powered by Perplexity AI</p>
+      <div class="header-content">
+        <div>
+          <h1>AI Chat Agent</h1>
+          <p>Powered by Perplexity AI</p>
+        </div>
+        <button
+          v-if="messages.length > 0"
+          @click="clearConversation"
+          class="clear-button"
+          :disabled="isLoading"
+          title="Start new conversation"
+        >
+          🗑️ New Conversation
+        </button>
+      </div>
     </div>
     <div class="chat-messages" ref="messagesContainer">
       <div 
@@ -52,18 +65,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, onMounted } from 'vue';
+import { ChatService } from '../services/chatService';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
 }
+
 const messages = ref<Message[]>([]);
 const currentMessage = ref('');
 const isLoading = ref(false);
 const error = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
-const API_BASE_URL = 'http://localhost:8080/api/chat';
+
+// Generate unique conversation ID for this session (persistent until page reload)
+const conversationId = ref<string>('conv-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+const userId = ref<string>('user-' + Date.now());
+
 const scrollToBottom = () => {
   nextTick(() => {
     if (messagesContainer.value) {
@@ -71,42 +91,39 @@ const scrollToBottom = () => {
     }
   });
 };
+
 const formatTime = (date: Date) => {
-  return date.toLocaleTimeString('de-DE', {
+  return date.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit'
   });
 };
 const sendMessage = async () => {
   if (!currentMessage.value.trim() || isLoading.value) return;
+
   const userMessage = currentMessage.value;
   currentMessage.value = '';
   error.value = '';
-  // Add user message
+
+  // Add user message to UI
   messages.value.push({
     role: 'user',
     content: userMessage,
     timestamp: new Date()
   });
   scrollToBottom();
+
   isLoading.value = true;
+
   try {
-    const response = await fetch(API_BASE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: userMessage,
-        userId: 'user-' + Date.now()
-      }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to get response');
-    }
-    const data = await response.json();
-    // Add assistant message
+    // Send message with conversationId to maintain history
+    const data = await ChatService.sendMessage(
+      userMessage,
+      userId.value,
+      conversationId.value
+    );
+
+    // Add assistant message to UI
     messages.value.push({
       role: 'assistant',
       content: data.reply,
@@ -120,20 +137,39 @@ const sendMessage = async () => {
     isLoading.value = false;
   }
 };
+
+const clearConversation = async () => {
+  if (!confirm('Do you really want to start a new conversation? The current chat history will be deleted.')) {
+    return;
+  }
+
+  try {
+    await ChatService.clearConversation(conversationId.value);
+    messages.value = [];
+    error.value = '';
+    conversationId.value = 'conv-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    console.log('✅ New conversation started. ID:', conversationId.value);
+  } catch (err: any) {
+    error.value = 'Error clearing conversation: ' + err.message;
+    console.error('Error clearing conversation:', err);
+  }
+};
+
+onMounted(() => {
+  console.log('Chat initialized with conversation ID:', conversationId.value);
+});
 </script>
 <style scoped>
 .chat-container {
   display: flex;
   flex-direction: column;
-  /* Höhe auf 2/3 der Viewport-Höhe begrenzen */
   height: 66vh;
-  /* Breite auf 2/3 der Viewport-Breite begrenzen */
   width: 66vw;
   min-width: 320px;
   max-width: 900px;
   min-height: 400px;
   max-height: 900px;
-  margin: auto; /* zentriert vertikal und horizontal */
+  margin: auto;
   background: #f5f5f5;
   border-radius: 1.5rem;
   box-shadow: 0 4px 24px rgba(0,0,0,0.08);
@@ -142,8 +178,16 @@ const sendMessage = async () => {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 1.5rem;
-  text-align: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.header-content > div {
+  text-align: left;
 }
 .chat-header h1 {
   margin: 0;
@@ -154,6 +198,30 @@ const sendMessage = async () => {
   margin: 0.5rem 0 0;
   opacity: 0.9;
   font-size: 0.9rem;
+}
+.clear-button {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  padding: 0.7rem 1.4rem;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.clear-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.7);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.clear-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 .chat-messages {
   flex: 1;

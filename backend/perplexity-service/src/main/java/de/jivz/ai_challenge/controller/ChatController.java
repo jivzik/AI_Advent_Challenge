@@ -2,6 +2,7 @@ package de.jivz.ai_challenge.controller;
 import de.jivz.ai_challenge.dto.ChatRequest;
 import de.jivz.ai_challenge.dto.ChatResponse;
 import de.jivz.ai_challenge.service.AgentService;
+import de.jivz.ai_challenge.service.ConversationHistoryService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +18,12 @@ import java.util.Map;
 @RequestMapping("/api/chat")
 public class ChatController {
     private final AgentService agentService;
+    private final ConversationHistoryService historyService;
 
-    public ChatController(AgentService agentService) {
+    public ChatController(AgentService agentService,
+                          ConversationHistoryService historyService) {
         this.agentService = agentService;
+        this.historyService = historyService;
     }
     /**
      * Processes a chat request and returns the AI response.
@@ -45,6 +49,36 @@ public class ChatController {
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of(
                 "status", "UP",
+                "timestamp", Instant.now().toString()
+        ));
+    }
+
+    /**
+     * Clears the conversation history for a specific conversationId.
+     *
+     * @param conversationId the conversation identifier
+     * @return confirmation message
+     */
+    @DeleteMapping("/conversation/{conversationId}")
+    public ResponseEntity<Map<String, String>> clearConversation(@PathVariable String conversationId) {
+        log.info("Clearing conversation history for conversationId: {}", conversationId);
+        historyService.clearHistory(conversationId);
+        return ResponseEntity.ok(Map.of(
+                "status", "cleared",
+                "conversationId", conversationId,
+                "timestamp", Instant.now().toString()
+        ));
+    }
+
+    /**
+     * Gets statistics about active conversations.
+     *
+     * @return conversation statistics
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getStats() {
+        return ResponseEntity.ok(Map.of(
+                "activeConversations", historyService.getConversationCount(),
                 "timestamp", Instant.now().toString()
         ));
     }

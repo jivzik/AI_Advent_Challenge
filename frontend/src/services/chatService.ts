@@ -1,10 +1,11 @@
 import type { ChatRequest, ChatResponse, ErrorResponse } from '../types/chat';
 const API_BASE_URL = 'http://localhost:8080/api/chat';
 export class ChatService {
-  static async sendMessage(message: string, userId?: string): Promise<ChatResponse> {
+  static async sendMessage(message: string, userId?: string, conversationId?: string): Promise<ChatResponse> {
     const request: ChatRequest = {
       message,
-      userId
+      userId,
+      conversationId
     };
     try {
       const response = await fetch(API_BASE_URL, {
@@ -36,6 +37,31 @@ export class ChatService {
       return await response.json();
     } catch (error) {
       throw new Error('Backend is not reachable');
+    }
+  }
+
+  static async clearConversation(conversationId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/conversation/${conversationId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to clear conversation');
+      }
+    } catch (error) {
+      throw new Error('Failed to clear conversation history');
+    }
+  }
+
+  static async getStats(): Promise<{ activeConversations: number; timestamp: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/stats`);
+      if (!response.ok) {
+        throw new Error('Failed to get stats');
+      }
+      return await response.json();
+    } catch (error) {
+      throw new Error('Failed to get conversation stats');
     }
   }
 }
