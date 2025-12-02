@@ -6,15 +6,33 @@
           <h1>AI Chat Agent</h1>
           <p>Powered by Perplexity AI</p>
         </div>
-        <button
-          v-if="messages.length > 0"
-          @click="clearConversation"
-          class="clear-button"
-          :disabled="isLoading"
-          title="Start new conversation"
-        >
-          🗑️ New Conversation
-        </button>
+        <div class="header-controls">
+          <label class="json-toggle">
+            <input
+              type="checkbox"
+              v-model="jsonResponseMode"
+              :disabled="isLoading"
+            />
+            <span>JSON-Antworten</span>
+          </label>
+          <label v-if="jsonResponseMode" class="auto-schema-toggle">
+            <input
+              type="checkbox"
+              v-model="autoSchemaMode"
+              :disabled="isLoading"
+            />
+            <span>🤖 Auto-Schema</span>
+          </label>
+          <button
+            v-if="messages.length > 0"
+            @click="clearConversation"
+            class="clear-button"
+            :disabled="isLoading"
+            title="Start new conversation"
+          >
+            🗑️ New Conversation
+          </button>
+        </div>
       </div>
     </div>
     <div class="chat-messages" ref="messagesContainer">
@@ -25,7 +43,20 @@
       >
         <div class="message-content">
           <div class="message-role">{{ msg.role === 'user' ? 'You' : 'AI Agent' }}</div>
-          <div class="message-text">{{ msg.content }}</div>
+          <div class="message-text" v-if="!isJsonContent(msg.content)">{{ msg.content }}</div>
+          <div v-else class="message-json">
+            <div class="json-header">
+              <span class="json-badge">JSON</span>
+              <button @click="copyToClipboard(msg.content)" class="copy-button" title="Copy JSON">
+                📋 Copy
+              </button>
+              <button @click="toggleJsonView(index)" class="toggle-button" title="Toggle view">
+                {{ expandedJson[index] ? '📄 Raw' : '📖 Tree' }}
+              </button>
+            </div>
+            <pre v-if="!expandedJson[index]" class="json-formatted" v-html="formatJsonHtml(msg.content)"></pre>
+            <div v-else class="json-tree" v-html="createJsonTree(msg.content)"></div>
+          </div>
           <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
         </div>
       </div>
@@ -65,8 +96,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue';
+import { ref, reactive, nextTick, onMounted } from 'vue';
 import { ChatService } from '../services/chatService';
+import { JsonFormatter } from '../utils/jsonFormatter';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -79,10 +111,46 @@ const currentMessage = ref('');
 const isLoading = ref(false);
 const error = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
+const jsonResponseMode = ref(false);
+const autoSchemaMode = ref(true); // Auto-Schema is enabled by default when JSON mode is on
+const expandedJson = reactive<Record<number, boolean>>({}); // Track JSON view state per message (reactive!)
 
 // Generate unique conversation ID for this session (persistent until page reload)
 const conversationId = ref<string>('conv-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
 const userId = ref<string>('user-' + Date.now());
+
+// JSON handling methods
+const isJsonContent = (content: string): boolean => {
+  return JsonFormatter.isValidJson(content);
+};
+
+const formatJsonHtml = (content: string): string => {
+  return JsonFormatter.toHtml(content);
+};
+
+const createJsonTree = (content: string): string => {
+  try {
+    const parsed = JSON.parse(content);
+    return JsonFormatter.createTreeView(parsed);
+  } catch {
+    return content;
+  }
+};
+
+const toggleJsonView = (index: number) => {
+  expandedJson[index] = !expandedJson[index];
+};
+
+const copyToClipboard = async (content: string) => {
+  try {
+    const formatted = JsonFormatter.formatJson(content);
+    await navigator.clipboard.writeText(formatted);
+    console.log('✅ JSON copied to clipboard');
+  } catch (err) {
+    console.error('❌ Failed to copy:', err);
+    alert('Failed to copy to clipboard');
+  }
+};
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -120,7 +188,9 @@ const sendMessage = async () => {
     const data = await ChatService.sendMessage(
       userMessage,
       userId.value,
-      conversationId.value
+      conversationId.value,
+      jsonResponseMode.value,
+      autoSchemaMode.value
     );
 
     // Add assistant message to UI
@@ -188,6 +258,61 @@ onMounted(() => {
 }
 .header-content > div {
   text-align: left;
+}
+.header-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+.json-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.65rem 1.2rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+}
+.json-toggle input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+.json-toggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.json-toggle input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+.auto-schema-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 0.65rem 1.2rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+}
+.auto-schema-toggle input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+.auto-schema-toggle:hover {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+.auto-schema-toggle input[type="checkbox"]:disabled {
+  cursor: not-allowed;
 }
 .chat-header h1 {
   margin: 0;
@@ -275,6 +400,132 @@ onMounted(() => {
 .message-text {
   word-wrap: break-word;
   line-height: 1.5;
+}
+.message-json {
+  margin-top: 0.5rem;
+  text-align: left;
+  width: 100%;
+}
+.json-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  text-align: left;
+}
+.message.user .json-header {
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+.json-badge {
+  background: #4caf50;
+  color: white;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.copy-button, .toggle-button {
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+  color: inherit;
+}
+.message.user .copy-button,
+.message.user .toggle-button {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+.copy-button:hover, .toggle-button:hover {
+  background: rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.message.user .copy-button:hover,
+.message.user .toggle-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.copy-button:active, .toggle-button:active {
+  transform: translateY(0);
+}
+.json-formatted, .json-tree {
+  background: rgba(0, 0, 0, 0.04);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-family: 'Courier New', Consolas, Monaco, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  direction: ltr;
+  max-width: 100%;
+}
+.message.user .json-formatted,
+.message.user .json-tree {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* JSON Syntax Highlighting */
+.json-key {
+  color: #881391;
+  font-weight: 600;
+}
+.json-string {
+  color: #1a1aa6;
+}
+.json-number {
+  color: #098658;
+}
+.json-boolean {
+  color: #0000ff;
+  font-weight: 600;
+}
+.json-null {
+  color: #808080;
+  font-style: italic;
+}
+.json-bracket {
+  color: #333;
+  font-weight: bold;
+}
+.json-comma {
+  color: #333;
+}
+
+/* Syntax highlighting for user messages */
+.message.user .json-key {
+  color: #ffd700;
+  font-weight: 600;
+}
+.message.user .json-string {
+  color: #b3e5fc;
+}
+.message.user .json-number {
+  color: #a5d6a7;
+}
+.message.user .json-boolean {
+  color: #90caf9;
+  font-weight: 600;
+}
+.message.user .json-null {
+  color: #ccc;
+}
+.message.user .json-bracket,
+.message.user .json-comma {
+  color: rgba(255, 255, 255, 0.8);
 }
 .message-time {
   font-size: 0.7rem;

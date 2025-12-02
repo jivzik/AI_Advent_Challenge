@@ -128,7 +128,7 @@ public class PerplexityToolClient {
                     .bodyToMono(PerplexityResponse.class)
                     .block(); // Blocking for synchronous use
 
-            log.info("✅ Received response from Perplexity API");
+            log.info("✅ Received response from Perplexity API {}", response);
 
             // Extract answer from choices[0].message.content (type-safe!)
             if (response != null && response.getChoices() != null && !response.getChoices().isEmpty()) {

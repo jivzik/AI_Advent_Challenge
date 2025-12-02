@@ -1,11 +1,19 @@
 import type { ChatRequest, ChatResponse, ErrorResponse } from '../types/chat';
 const API_BASE_URL = 'http://localhost:8080/api/chat';
 export class ChatService {
-  static async sendMessage(message: string, userId?: string, conversationId?: string): Promise<ChatResponse> {
+  static async sendMessage(
+    message: string,
+    userId: string | undefined,
+    conversationId: string | undefined,
+    jsonMode: boolean,
+    autoSchema: boolean = false
+  ): Promise<ChatResponse> {
     const request: ChatRequest = {
       message,
       userId,
-      conversationId
+      conversationId,
+      jsonMode,
+      autoSchema
     };
     try {
       const response = await fetch(API_BASE_URL, {

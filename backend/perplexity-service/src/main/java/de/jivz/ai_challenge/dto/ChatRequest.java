@@ -8,6 +8,9 @@ public class ChatRequest {
     private String message;
     private String userId;
     private String conversationId;
+    private boolean jsonMode = false;
+    private String jsonSchema; // Optional: Custom JSON schema for structured responses
+    private boolean autoSchema = false; // Auto-generate JSON schema based on question
 
     public ChatRequest() {
     }
@@ -45,6 +48,30 @@ public class ChatRequest {
 
     public void setConversationId(String conversationId) {
         this.conversationId = conversationId;
+    }
+
+    public boolean isJsonMode() {
+        return jsonMode;
+    }
+
+    public void setJsonMode(boolean jsonMode) {
+        this.jsonMode = jsonMode;
+    }
+
+    public String getJsonSchema() {
+        return jsonSchema;
+    }
+
+    public void setJsonSchema(String jsonSchema) {
+        this.jsonSchema = jsonSchema;
+    }
+
+    public boolean isAutoSchema() {
+        return autoSchema;
+    }
+
+    public void setAutoSchema(boolean autoSchema) {
+        this.autoSchema = autoSchema;
     }
 }
 
