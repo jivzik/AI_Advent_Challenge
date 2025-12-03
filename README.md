@@ -2,6 +2,27 @@
 
 A simple chat application that connects a Vue 3 frontend with a Spring Boot backend, powered by Perplexity AI.
 
+## 🌟 NEW: Nutritionist Agent Feature
+
+**Conversational AI that automatically collects data and generates a complete weekly meal plan!**
+
+### Features:
+- 🍽️ Generates personalized weekly menus for families
+- 🧮 Calculates KBJU (Calories, Proteins, Fats, Carbs) for each family member
+- 🛒 Creates shopping lists sorted by German supermarkets (Lidl, REWE, DM, etc.)
+- 🌾 Supports special diets (gluten-free, vegetarian, keto, etc.)
+- 🤖 Automatically stops when all data is collected
+- 📊 Real-time progress tracking in the UI
+
+**Activation:**
+```typescript
+{
+  "message": "Ich brauche einen Ernährungsplan",
+  "jsonMode": true,
+  "jsonSchema": "nutritionist_mode"  // ← The magic marker!
+}
+```
+
 ## Overview
 
 This project demonstrates a full-stack chat application where:

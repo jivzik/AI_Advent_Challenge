@@ -5,16 +5,23 @@ import org.springframework.util.StringUtils;
 
 /**
  * Strategy for custom JSON schema instructions.
- * Used when user provides a specific JSON schema.
+ * Used when user provides a specific JSON schema (but NOT special modes like nutritionist).
  */
 @Component
 public class CustomSchemaInstructionStrategy implements JsonInstructionStrategy {
 
+    private static final String NUTRITIONIST_MARKER = "nutritionist_mode";
     private String customSchema;
 
     @Override
     public boolean canHandle(String customSchema, boolean autoSchema) {
-        if (StringUtils.hasText(customSchema)) {
+        // Don't handle if it's a special mode (like nutritionist)
+        if (customSchema != null && customSchema.contains(NUTRITIONIST_MARKER)) {
+            return false;
+        }
+
+        // Handle only if custom schema is provided and not auto-schema mode
+        if (StringUtils.hasText(customSchema) && !autoSchema) {
             this.customSchema = customSchema;
             return true;
         }
