@@ -2,11 +2,36 @@
 
 A simple chat application that connects a Vue 3 frontend with a Spring Boot backend, powered by Perplexity AI.
 
-## 🌟 NEW: Nutritionist Agent Feature
+## 🌟 NEW FEATURES
 
-**Conversational AI that automatically collects data and generates a complete weekly meal plan!**
+### 🎯 Meta-Prompting - Universal AI Assistant (NEWEST!)
 
-### Features:
+**The ultimate feature: ONE AI that adapts to ANY goal!**
+
+**What it does:**
+- ✅ Asks what you want to create/plan
+- ✅ Dynamically generates required fields
+- ✅ Collects data through natural conversation
+- ✅ Automatically stops when complete
+- ✅ Generates perfect output for your goal
+
+**Supported goals:**
+- ✈️ Travel Planning | 💼 Business Plans | 🛒 Purchase Decisions
+- 📝 Technical Specs | 💪 Workout Plans | 🎓 Study Plans
+- 🏠 Moving Plans | **...and ANYTHING else!**
+
+**Activation:**
+```json
+{ "jsonMode": true, "jsonSchema": "meta_prompt" }
+```
+
+---
+
+### 🍽️ Nutritionist Agent Feature
+
+**Specialized AI for family meal planning**
+
+**Features:**
 - 🍽️ Generates personalized weekly menus for families
 - 🧮 Calculates KBJU (Calories, Proteins, Fats, Carbs) for each family member
 - 🛒 Creates shopping lists sorted by German supermarkets (Lidl, REWE, DM, etc.)
@@ -15,12 +40,8 @@ A simple chat application that connects a Vue 3 frontend with a Spring Boot back
 - 📊 Real-time progress tracking in the UI
 
 **Activation:**
-```typescript
-{
-  "message": "Ich brauche einen Ernährungsplan",
-  "jsonMode": true,
-  "jsonSchema": "nutritionist_mode"  // ← The magic marker!
-}
+```json
+{ "jsonMode": true, "jsonSchema": "nutritionist_mode" }
 ```
 
 ## Overview

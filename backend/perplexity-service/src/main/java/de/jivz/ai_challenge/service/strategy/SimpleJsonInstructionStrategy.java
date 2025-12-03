@@ -11,15 +11,16 @@ import org.springframework.stereotype.Component;
 public class SimpleJsonInstructionStrategy implements JsonInstructionStrategy {
 
     private static final String NUTRITIONIST_MARKER = "nutritionist_mode";
+    private static final String META_PROMPT_MARKER = "meta_prompt";
 
     @Override
     public boolean canHandle(String customSchema, boolean autoSchema) {
         // This is the fallback strategy - handle only when no specific mode is set
-        // Don't handle if it's nutritionist mode or auto-schema mode
+        // Don't handle if it's nutritionist mode, meta_prompt mode, or auto-schema mode
         if (autoSchema) {
             return false;
         }
-        if (customSchema != null && customSchema.contains(NUTRITIONIST_MARKER)) {
+        if (customSchema != null && (customSchema.contains(NUTRITIONIST_MARKER) || customSchema.contains(META_PROMPT_MARKER))) {
             return false;
         }
         // Simple fallback for basic JSON mode

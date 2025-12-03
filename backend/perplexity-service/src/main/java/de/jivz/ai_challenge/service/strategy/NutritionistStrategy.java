@@ -15,9 +15,14 @@ import org.springframework.stereotype.Component;
 public class NutritionistStrategy implements JsonInstructionStrategy {
 
     private static final String NUTRITIONIST_MARKER = "nutritionist_mode";
+    private static final String META_PROMPT_MARKER = "meta_prompt";
 
     @Override
     public boolean canHandle(String customSchema, boolean autoSchema) {
+        // Don't handle if it's meta_prompt mode (meta_prompt has higher priority)
+        if (customSchema != null && customSchema.contains(META_PROMPT_MARKER)) {
+            return false;
+        }
         // This strategy handles requests with "nutritionist_mode" in customSchema
         return customSchema != null && customSchema.contains(NUTRITIONIST_MARKER);
     }

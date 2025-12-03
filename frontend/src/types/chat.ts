@@ -4,6 +4,7 @@ export interface ChatRequest {
   conversationId?: string;
   jsonMode?: boolean;
   autoSchema?: boolean;
+  jsonSchema?: string;
 }
 export interface ChatResponse {
   reply: string;

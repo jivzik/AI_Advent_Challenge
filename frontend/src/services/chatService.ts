@@ -1,6 +1,57 @@
 import type { ChatRequest, ChatResponse, ErrorResponse } from '../types/chat';
+
 const API_BASE_URL = 'http://localhost:8080/api/chat';
+
+interface SendMessageOptions {
+  message: string;
+  userId?: string;
+  conversationId?: string;
+  jsonMode?: boolean;
+  autoSchema?: boolean;
+  jsonSchema?: string;
+}
+
 export class ChatService {
+  /**
+   * Send message with options object (new method for better ergonomics)
+   */
+  static async sendMessageWithOptions(options: SendMessageOptions): Promise<ChatResponse> {
+    const request: ChatRequest = {
+      message: options.message,
+      userId: options.userId,
+      conversationId: options.conversationId,
+      jsonMode: options.jsonMode || false,
+      autoSchema: options.autoSchema || false,
+      jsonSchema: options.jsonSchema
+    };
+
+    try {
+      const response = await fetch(API_BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const errorData: ErrorResponse = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data: ChatResponse = await response.json();
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred');
+    }
+  }
+
+  /**
+   * Original sendMessage method (kept for backward compatibility)
+   */
   static async sendMessage(
     message: string,
     userId: string | undefined,

@@ -11,12 +11,13 @@ import org.springframework.util.StringUtils;
 public class CustomSchemaInstructionStrategy implements JsonInstructionStrategy {
 
     private static final String NUTRITIONIST_MARKER = "nutritionist_mode";
+    private static final String META_PROMPT_MARKER = "meta_prompt";
     private String customSchema;
 
     @Override
     public boolean canHandle(String customSchema, boolean autoSchema) {
-        // Don't handle if it's a special mode (like nutritionist)
-        if (customSchema != null && customSchema.contains(NUTRITIONIST_MARKER)) {
+        // Don't handle special modes (they have their own strategies)
+        if (customSchema != null && (customSchema.contains(NUTRITIONIST_MARKER) || customSchema.contains(META_PROMPT_MARKER))) {
             return false;
         }
 
