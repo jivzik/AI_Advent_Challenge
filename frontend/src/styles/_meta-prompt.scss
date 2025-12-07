@@ -1,0 +1,198 @@
+// ==============================================
+// META PROMPT - Специфичные стили для MetaPromptChat
+// ==============================================
+
+@use 'variables' as *;
+@use 'mixins' as *;
+
+// ==============================================
+// Progress Section
+// ==============================================
+.progress-section {
+  background: rgba(102, 126, 234, 0.1);
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.progress-header {
+  @include flex-between;
+  margin-bottom: 8px;
+
+  h3 {
+    margin: 0;
+    font-size: $font-size-md;
+    color: $primary-color;
+    font-weight: 600;
+  }
+}
+
+.progress-fraction {
+  font-size: $font-size-base;
+  color: $text-muted;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: $primary-gradient;
+  transition: width $transition-slow ease;
+  border-radius: 4px;
+  color: $text-white;
+  font-size: $font-size-xs;
+  text-align: center;
+  line-height: 8px;
+}
+
+// ==============================================
+// Missing Fields
+// ==============================================
+.missing-fields {
+  margin-top: 8px;
+
+  p {
+    margin: 0 0 6px 0;
+    font-size: $font-size-base;
+    color: $text-muted;
+  }
+}
+
+.field-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.field-chip {
+  background: rgba(102, 126, 234, 0.15);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: $primary-color;
+}
+
+// ==============================================
+// Result Section
+// ==============================================
+.result-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-xl;
+  background: $bg-white;
+}
+
+.result-header {
+  text-align: left;
+  margin-bottom: $spacing-xl;
+  padding-bottom: $spacing-lg;
+  border-bottom: 2px solid $border-light;
+}
+
+.result-title {
+  font-size: $font-size-xxl;
+  color: $text-dark;
+  margin: 0 0 $spacing-sm 0;
+  font-weight: 700;
+}
+
+.result-summary {
+  color: $text-muted;
+  font-size: 1.1rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
+// ==============================================
+// Result Content (JSON Display)
+// ==============================================
+.result-content {
+  background: $bg-dark;
+  padding: 0;
+  border-radius: 12px;
+  margin-bottom: $spacing-xl;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+
+  // JSON Header in Result
+  .json-header {
+    @include flex-between;
+    padding: 0.75rem $spacing-md;
+    background: $bg-dark-secondary;
+    border-bottom: 1px solid #3d3d3d;
+    margin-bottom: 0;
+  }
+
+  .json-badge {
+    background: $primary-color;
+  }
+
+  .copy-button,
+  .toggle-button {
+    @include action-button-dark;
+  }
+}
+
+// JSON in Result (Dark Theme)
+.result-content {
+  .json-formatted,
+  .json-tree {
+    background: $bg-dark;
+    color: #d4d4d4;
+    padding: $spacing-lg;
+    margin: 0;
+    overflow-x: auto;
+    font-family: $font-mono;
+    font-size: $font-size-md;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  // Dark Theme Syntax Highlighting
+  :deep(.json-key) {
+    color: $json-key-dark;
+    font-weight: 600;
+  }
+
+  :deep(.json-string) {
+    color: $json-string-dark;
+  }
+
+  :deep(.json-number) {
+    color: $json-number-dark;
+  }
+
+  :deep(.json-boolean) {
+    color: $json-boolean-dark;
+  }
+
+  :deep(.json-null) {
+    color: $json-boolean-dark;
+  }
+
+  :deep(.json-bracket) {
+    color: $json-bracket-dark;
+  }
+
+  :deep(.json-comma) {
+    color: #d4d4d4;
+  }
+}
+
+// ==============================================
+// Action Buttons Container
+// ==============================================
+.action-buttons {
+  display: flex;
+  gap: $spacing-md;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+

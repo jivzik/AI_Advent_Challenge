@@ -1,0 +1,49 @@
+// ==============================================
+// APP LAYOUT - Стили для главного App.vue
+// ==============================================
+
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.app-container {
+  height: 100vh;
+  @include flex-column;
+}
+
+// ==============================================
+// Mode Selector (Tab Navigation)
+// ==============================================
+.mode-selector {
+  display: flex;
+  background: $bg-white;
+  border-bottom: 2px solid $border-light;
+  padding: 10px 20px;
+  gap: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+  button {
+    padding: 12px 24px;
+    border: 2px solid $border-light;
+    background: $bg-white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: $font-size-lg;
+    font-weight: 500;
+    transition: all $transition-base;
+    color: $text-muted;
+
+    &:hover {
+      border-color: $secondary-color;
+      color: $secondary-color;
+      background: #f0f8ff;
+    }
+
+    &.active {
+      background: $secondary-color;
+      color: $text-white;
+      border-color: $secondary-color;
+      box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+    }
+  }
+}
+

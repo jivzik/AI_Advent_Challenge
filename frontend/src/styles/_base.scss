@@ -1,0 +1,51 @@
+// ==============================================
+// BASE - Глобальные базовые стили
+// ==============================================
+
+@use 'variables' as *;
+@use 'sass:color';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: $font-family;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: $font-family;
+  background: $bg-light;
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+a {
+  font-weight: 500;
+  color: $secondary-color;
+  text-decoration: inherit;
+
+  &:hover {
+    color: color.adjust($secondary-color, $lightness: -10%);
+  }
+}
+
+h1 {
+  font-size: $font-size-xl;
+  line-height: 1.1;
+}
+
+#app {
+  width: 100%;
+  margin: 0 auto;
+}
+

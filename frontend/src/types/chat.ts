@@ -5,6 +5,7 @@ export interface ChatRequest {
   jsonMode?: boolean;
   autoSchema?: boolean;
   jsonSchema?: string;
+  systemPrompt?: string;
 }
 export interface ChatResponse {
   reply: string;

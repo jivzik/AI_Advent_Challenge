@@ -1,0 +1,254 @@
+// ==============================================
+// MIXINS - Переиспользуемые стили
+// ==============================================
+
+@use 'variables' as *;
+
+// Flexbox Helpers
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// Button Base
+@mixin button-base {
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all $transition-base;
+  white-space: nowrap;
+}
+
+// Primary Button
+@mixin button-primary {
+  @include button-base;
+  background: $primary-gradient;
+  color: $text-white;
+  border-radius: $radius-full;
+  padding: 0.875rem 2rem;
+  font-size: $font-size-lg;
+  box-shadow: $shadow-primary;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: $shadow-primary-hover;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+// Secondary Button
+@mixin button-secondary {
+  @include button-base;
+  background: #6c757d;
+  color: $text-white;
+  border-radius: $radius-full;
+  padding: 0.875rem 2rem;
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+  }
+}
+
+// Glass Button (for header)
+@mixin button-glass {
+  @include button-base;
+  background: rgba(255, 255, 255, 0.25);
+  color: $text-white;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  padding: 0.7rem 1.4rem;
+  border-radius: $radius-md;
+  font-size: 0.95rem;
+  box-shadow: $shadow-sm;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: translateY(-2px);
+    box-shadow: $shadow-md;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+// Input Field
+@mixin input-field {
+  padding: 0.875rem;
+  border: 2px solid $border-light;
+  border-radius: $radius-md;
+  font-size: $font-size-lg;
+  transition: border-color $transition-base;
+  background: $bg-white;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+  }
+
+  &:disabled {
+    background: $bg-light;
+    cursor: not-allowed;
+  }
+}
+
+// Rounded Input
+@mixin input-rounded {
+  @include input-field;
+  border-radius: $radius-full;
+  padding: 0.875rem 1.25rem;
+
+  &:focus {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+}
+
+// Card/Container
+@mixin card {
+  background: $bg-light;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-lg;
+}
+
+// Scrollbar Styling
+@mixin custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+}
+
+// Animation Fade In
+@mixin fade-in {
+  animation: fadeIn $transition-base ease-in;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+// Typing Indicator Animation
+@mixin typing-animation {
+  animation: typing 1.4s infinite;
+
+  @keyframes typing {
+    0%, 60%, 100% {
+      transform: translateY(0);
+      opacity: 0.7;
+    }
+    30% {
+      transform: translateY(-10px);
+      opacity: 1;
+    }
+  }
+}
+
+// Toggle/Checkbox Label
+@mixin toggle-label {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.65rem 1.2rem;
+  border-radius: $radius-md;
+  cursor: pointer;
+  font-size: $font-size-md;
+  transition: all $transition-base;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+
+  input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+  }
+}
+
+// Small Action Button (copy, toggle view)
+@mixin action-button-small {
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  font-size: $font-size-sm;
+  transition: all $transition-fast;
+  white-space: nowrap;
+  color: inherit;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Dark Theme Action Button
+@mixin action-button-dark {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.4rem 0.8rem;
+  border-radius: $radius-md;
+  font-size: $font-size-base;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+}
+

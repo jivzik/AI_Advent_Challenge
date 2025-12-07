@@ -11,6 +11,7 @@ public class ChatRequest {
     private boolean jsonMode = false;
     private String jsonSchema; // Optional: Custom JSON schema for structured responses
     private boolean autoSchema = false; // Auto-generate JSON schema based on question
+    private String systemPrompt; // Optional: System prompt to define agent personality
 
     public ChatRequest() {
     }
@@ -72,6 +73,14 @@ public class ChatRequest {
 
     public void setAutoSchema(boolean autoSchema) {
         this.autoSchema = autoSchema;
+    }
+
+    public String getSystemPrompt() {
+        return systemPrompt;
+    }
+
+    public void setSystemPrompt(String systemPrompt) {
+        this.systemPrompt = systemPrompt;
     }
 }
 

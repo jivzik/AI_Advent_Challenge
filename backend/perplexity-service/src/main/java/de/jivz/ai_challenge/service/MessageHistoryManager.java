@@ -22,16 +22,42 @@ public class MessageHistoryManager {
     private final List<JsonInstructionStrategy> instructionStrategies;
 
     /**
-     * Prepares the message history with the user's message and optional JSON instruction.
+     * Prepares the message history with the system prompt, user's message and optional JSON instruction.
+     * The system prompt is always set as the first message, replacing any existing system message.
      *
      * @param history The existing conversation history
      * @param request The chat request containing the user's message
      */
     public void prepareHistory(List<Message> history, ChatRequest request) {
+        // Handle system prompt - always update/set as first message
+        updateSystemPrompt(history, request.getSystemPrompt());
+
         if (request.isJsonMode()) {
             addJsonModeMessage(history, request);
         } else {
             addNormalMessage(history, request.getMessage());
+        }
+    }
+
+    /**
+     * Updates or adds the system prompt as the first message in the history.
+     * If a system prompt already exists, it will be replaced with the new one.
+     *
+     * @param history      The conversation history
+     * @param systemPrompt The system prompt to set (can be null or empty)
+     */
+    private void updateSystemPrompt(List<Message> history, String systemPrompt) {
+        // Remove existing system message if present
+        if (!history.isEmpty() && "system".equals(history.getFirst().getRole())) {
+            history.removeFirst();
+            log.debug("Removed existing system prompt");
+        }
+
+        // Add new system prompt if provided
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            history.addFirst(new Message("system", systemPrompt));
+            log.info("🎭 Set system prompt: {}...",
+                    systemPrompt.substring(0, Math.min(50, systemPrompt.length())));
         }
     }
 

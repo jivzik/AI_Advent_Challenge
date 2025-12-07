@@ -9,6 +9,7 @@ interface SendMessageOptions {
   jsonMode?: boolean;
   autoSchema?: boolean;
   jsonSchema?: string;
+  systemPrompt?: string;
 }
 
 export class ChatService {
@@ -22,7 +23,8 @@ export class ChatService {
       conversationId: options.conversationId,
       jsonMode: options.jsonMode || false,
       autoSchema: options.autoSchema || false,
-      jsonSchema: options.jsonSchema
+      jsonSchema: options.jsonSchema,
+      systemPrompt: options.systemPrompt
     };
 
     try {

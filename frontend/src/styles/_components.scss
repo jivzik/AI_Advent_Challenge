@@ -1,0 +1,585 @@
+// ==============================================
+// COMPONENTS - Стили для общих компонентов
+// ==============================================
+
+@use 'variables' as *;
+@use 'mixins' as *;
+
+// ==============================================
+// Chat Container
+// ==============================================
+.chat-container {
+  @include flex-column;
+  @include card;
+  height: $chat-height;
+  width: $chat-width;
+  min-width: $chat-min-width;
+  max-width: $chat-max-width;
+  min-height: $chat-min-height;
+  max-height: $chat-max-height;
+  margin: auto;
+}
+
+// ==============================================
+// Chat Header
+// ==============================================
+.chat-header {
+  background: $primary-gradient;
+  color: $text-white;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+
+  h1 {
+    margin: 0;
+    font-size: $font-size-xl;
+    font-weight: 600;
+  }
+
+  p {
+    margin: $spacing-sm 0 0;
+    opacity: 0.9;
+    font-size: $font-size-md;
+  }
+}
+
+.header-content {
+  @include flex-between;
+  gap: $spacing-md;
+
+  > div {
+    text-align: left;
+  }
+}
+
+.header-controls {
+  display: flex;
+  gap: $spacing-md;
+  align-items: center;
+}
+
+// ==============================================
+// Toggle Labels (JSON, Auto-Schema)
+// ==============================================
+.json-toggle,
+.auto-schema-toggle {
+  @include toggle-label;
+}
+
+.auto-schema-toggle {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+// ==============================================
+// Clear/Action Buttons (Header)
+// ==============================================
+.clear-button {
+  @include button-glass;
+}
+
+// ==============================================
+// Chat Messages Container
+// ==============================================
+.chat-messages {
+  @include custom-scrollbar;
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-lg;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+// ==============================================
+// Message Bubble
+// ==============================================
+.message {
+  display: flex;
+  @include fade-in;
+
+  &.user {
+    justify-content: flex-end;
+  }
+
+  &.assistant {
+    justify-content: flex-start;
+  }
+}
+
+.message-content {
+  max-width: 70%;
+  padding: $spacing-md;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-sm;
+
+  .message.user & {
+    background: $primary-gradient;
+    color: $text-white;
+    border-bottom-right-radius: $radius-sm;
+  }
+
+  .message.assistant & {
+    background: $bg-white;
+    border-bottom-left-radius: $radius-sm;
+  }
+}
+
+.message-role {
+  font-size: $font-size-sm;
+  font-weight: 600;
+  margin-bottom: $spacing-sm;
+  opacity: 0.8;
+}
+
+.message-text {
+  word-wrap: break-word;
+  line-height: 1.5;
+}
+
+// ==============================================
+// Markdown Content Styling
+// ==============================================
+.markdown-content {
+  // Paragraphs
+  p {
+    margin: 0 0 $spacing-sm 0;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  // Headings
+  h1, h2, h3, h4, h5, h6 {
+    margin: $spacing-md 0 $spacing-sm 0;
+    font-weight: 600;
+    line-height: 1.3;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  h1 { font-size: 1.4em; }
+  h2 { font-size: 1.25em; }
+  h3 { font-size: 1.1em; }
+
+  // Lists
+  ul, ol {
+    margin: $spacing-sm 0;
+    padding-left: 1.5em;
+
+    li {
+      margin-bottom: $spacing-xs;
+      line-height: 1.5;
+    }
+  }
+
+  // Inline code
+  code {
+    background: rgba(0, 0, 0, 0.08);
+    padding: 0.15em 0.4em;
+    border-radius: $radius-sm;
+    font-family: $font-mono;
+    font-size: 0.9em;
+
+    .message.user & {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+
+  // Code blocks
+  pre {
+    background: rgba(0, 0, 0, 0.05);
+    padding: $spacing-md;
+    border-radius: $radius-md;
+    overflow-x: auto;
+    margin: $spacing-sm 0;
+
+    code {
+      background: none;
+      padding: 0;
+    }
+
+    .message.user & {
+      background: rgba(255, 255, 255, 0.12);
+    }
+  }
+
+  // Bold
+  strong {
+    font-weight: 600;
+  }
+
+  // Italic
+  em {
+    font-style: italic;
+  }
+
+  // Links
+  a {
+    color: inherit;
+    text-decoration: underline;
+    opacity: 0.9;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  // Blockquotes
+  blockquote {
+    border-left: 3px solid rgba(0, 0, 0, 0.2);
+    margin: $spacing-sm 0;
+    padding-left: $spacing-md;
+    font-style: italic;
+    opacity: 0.9;
+
+    .message.user & {
+      border-left-color: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  // Horizontal rule
+  hr {
+    border: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    margin: $spacing-md 0;
+
+    .message.user & {
+      border-top-color: rgba(255, 255, 255, 0.2);
+    }
+  }
+
+  // Tables
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: $spacing-sm 0;
+    font-size: 0.9em;
+
+    th, td {
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      padding: $spacing-xs $spacing-sm;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(0, 0, 0, 0.04);
+      font-weight: 600;
+    }
+
+    .message.user & {
+      th, td {
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+      th {
+        background: rgba(255, 255, 255, 0.1);
+      }
+    }
+  }
+}
+
+.message-time {
+  font-size: $font-size-xs;
+  margin-top: $spacing-sm;
+  opacity: 0.6;
+}
+
+// ==============================================
+// JSON Display in Messages
+// ==============================================
+.message-json {
+  margin-top: $spacing-sm;
+  text-align: left;
+  width: 100%;
+}
+
+.json-header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+  padding-bottom: $spacing-sm;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  text-align: left;
+
+  .message.user & {
+    border-bottom-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.json-badge {
+  background: $success-color;
+  color: $text-white;
+  padding: $spacing-xs 0.6rem;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.copy-button,
+.toggle-button {
+  @include action-button-small;
+
+  .message.user & {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: $text-white;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+.json-formatted,
+.json-tree {
+  background: rgba(0, 0, 0, 0.04);
+  padding: $spacing-md;
+  border-radius: $radius-md;
+  overflow-x: auto;
+  font-family: $font-mono;
+  font-size: $font-size-base;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  direction: ltr;
+  max-width: 100%;
+
+  .message.user & {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.95);
+  }
+}
+
+// ==============================================
+// JSON Syntax Highlighting (Light Theme - Assistant)
+// ==============================================
+.json-key {
+  color: $json-key-light;
+  font-weight: 600;
+}
+
+.json-string {
+  color: $json-string-light;
+}
+
+.json-number {
+  color: $json-number-light;
+}
+
+.json-boolean {
+  color: $json-boolean-light;
+  font-weight: 600;
+}
+
+.json-null {
+  color: #808080;
+  font-style: italic;
+}
+
+.json-bracket {
+  color: $json-bracket-light;
+  font-weight: bold;
+}
+
+.json-comma {
+  color: $json-bracket-light;
+}
+
+// JSON Syntax Highlighting (User Messages)
+.message.user {
+  .json-key {
+    color: $json-key-user;
+    font-weight: 600;
+  }
+
+  .json-string {
+    color: $json-string-user;
+  }
+
+  .json-number {
+    color: $json-number-user;
+  }
+
+  .json-boolean {
+    color: $json-boolean-user;
+    font-weight: 600;
+  }
+
+  .json-null {
+    color: #ccc;
+  }
+
+  .json-bracket,
+  .json-comma {
+    color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+// ==============================================
+// Typing Indicator
+// ==============================================
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: $spacing-sm 0;
+
+  span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: $primary-color;
+    @include typing-animation;
+
+    &:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+  }
+}
+
+// ==============================================
+// Chat Input Container
+// ==============================================
+.chat-input-container {
+  background: $bg-white;
+  padding: $spacing-md $spacing-lg;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chat-input-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.chat-input {
+  flex: 1;
+  @include input-rounded;
+}
+
+.send-button {
+  @include button-primary;
+}
+
+// ==============================================
+// Error Message
+// ==============================================
+.error-message {
+  background: $error-bg;
+  color: $error-text;
+  padding: 0.75rem;
+  border-radius: $radius-md;
+  margin-bottom: 0.75rem;
+  font-size: $font-size-md;
+}
+
+// ==============================================
+// System Prompt Section
+// ==============================================
+.system-prompt-section {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  padding: $spacing-md;
+  border-bottom: 1px solid $border-primary;
+}
+
+.system-prompt-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: $spacing-sm;
+}
+
+.system-prompt-label {
+  font-weight: 600;
+  color: $primary-color;
+  font-size: $font-size-md;
+}
+
+.system-prompt-hint {
+  font-size: $font-size-sm;
+  color: $text-light;
+  font-style: italic;
+}
+
+.system-prompt-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid $border-primary;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 50px;
+  max-height: 150px;
+  transition: border-color $transition-base, box-shadow $transition-base;
+  background: $bg-white;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  &:disabled {
+    background: $bg-light;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  &::placeholder {
+    color: #aaa;
+    font-style: italic;
+  }
+}
+
+// ==============================================
+// Action Buttons (Primary & Secondary)
+// ==============================================
+.btn-action {
+  @include button-primary;
+
+  &.secondary {
+    @include button-secondary;
+  }
+}
+
+// ==============================================
+// Responsive
+// ==============================================
+@media (max-width: 768px) {
+  .chat-container {
+    width: 95vw;
+    height: 80vh;
+    border-radius: $radius-lg;
+  }
+
+  .message-content {
+    max-width: 85%;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
