@@ -51,6 +51,31 @@
       ></textarea>
     </div>
 
+    <!-- Temperature Control Section -->
+    <div class="temperature-section">
+      <div class="temperature-header">
+        <span class="temperature-label">🌡️ Temperature</span>
+        <span class="temperature-value">{{ temperature.toFixed(1) }}</span>
+      </div>
+      <div class="temperature-description">
+        {{ getTemperatureDescription() }}
+      </div>
+      <input
+        type="range"
+        v-model.number="temperature"
+        min="0"
+        max="2"
+        step="0.1"
+        class="temperature-slider"
+        :disabled="isLoading"
+      />
+      <div class="temperature-range-labels">
+        <span class="range-label-left">0 — Точность</span>
+        <span class="range-label-center">1 — Баланс</span>
+        <span class="range-label-right">2 — Креативность</span>
+      </div>
+    </div>
+
     <div class="chat-messages" ref="messagesContainer">
       <div 
         v-for="(msg, index) in messages" 
@@ -132,6 +157,7 @@ const jsonResponseMode = ref(false);
 const autoSchemaMode = ref(true); // Auto-Schema is enabled by default when JSON mode is on
 const expandedJson = reactive<Record<number, boolean>>({}); // Track JSON view state per message (reactive!)
 const systemPrompt = ref('Ты дружелюбный ассистент, отвечай кратко и по делу.'); // Default system prompt
+const temperature = ref(0.7); // Default temperature value
 
 // Configure marked for safe HTML rendering
 marked.setOptions({
@@ -145,6 +171,18 @@ const renderMarkdown = (content: string): string => {
     return marked.parse(content) as string;
   } catch {
     return content;
+  }
+};
+
+// Get temperature description based on current value
+const getTemperatureDescription = (): string => {
+  const temp = temperature.value;
+  if (temp <= 0.3) {
+    return '0–0.3: Строгая точность, минимум фантазии';
+  } else if (temp <= 0.9) {
+    return '0.4–0.9: Баланс точности и креативности';
+  } else {
+    return '1.0–2.0: Максимальная креативность, возможен бред';
   }
 };
 
@@ -225,7 +263,8 @@ const sendMessage = async () => {
       conversationId: conversationId.value,
       jsonMode: jsonResponseMode.value,
       autoSchema: autoSchemaMode.value,
-      systemPrompt: systemPrompt.value
+      systemPrompt: systemPrompt.value,
+      temperature: temperature.value
     });
 
     // Add assistant message to UI

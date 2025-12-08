@@ -6,6 +6,7 @@ export interface ChatRequest {
   autoSchema?: boolean;
   jsonSchema?: string;
   systemPrompt?: string;
+  temperature?: number;
 }
 export interface ChatResponse {
   reply: string;

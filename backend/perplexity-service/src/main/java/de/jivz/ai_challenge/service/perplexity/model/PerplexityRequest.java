@@ -9,6 +9,7 @@ public class PerplexityRequest {
 
     private String model;
     private List<Message> messages;
+    private Double temperature;
 
     public PerplexityRequest() {
     }
@@ -16,6 +17,12 @@ public class PerplexityRequest {
     public PerplexityRequest(String model, List<Message> messages) {
         this.model = model;
         this.messages = messages;
+    }
+
+    public PerplexityRequest(String model, List<Message> messages, Double temperature) {
+        this.model = model;
+        this.messages = messages;
+        this.temperature = temperature;
     }
 
     public String getModel() {
@@ -32,6 +39,14 @@ public class PerplexityRequest {
 
     public void setMessages(List<Message> messages) {
         this.messages = messages;
+    }
+
+    public Double getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(Double temperature) {
+        this.temperature = temperature;
     }
 
     /**
@@ -76,6 +91,7 @@ public class PerplexityRequest {
     public static class Builder {
         private String model;
         private List<Message> messages;
+        private Double temperature;
 
         public Builder model(String model) {
             this.model = model;
@@ -84,6 +100,11 @@ public class PerplexityRequest {
 
         public Builder messages(List<Message> messages) {
             this.messages = messages;
+            return this;
+        }
+
+        public Builder temperature(Double temperature) {
+            this.temperature = temperature;
             return this;
         }
 
@@ -96,7 +117,7 @@ public class PerplexityRequest {
         }
 
         public PerplexityRequest build() {
-            return new PerplexityRequest(model, messages);
+            return new PerplexityRequest(model, messages, temperature);
         }
     }
 }

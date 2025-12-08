@@ -4,7 +4,27 @@ A simple chat application that connects a Vue 3 frontend with a Spring Boot back
 
 ## 🌟 NEW FEATURES
 
-### 🎯 Meta-Prompting - Universal AI Assistant (NEWEST!)
+### 🌡️ Temperature Control (LATEST!)
+
+**Control AI creativity in real-time!**
+
+**What it does:**
+- 🎚️ Horizontal slider to adjust temperature (0.0 - 2.0)
+- 🎯 **0.0-0.3**: Maximum precision, minimal creativity (facts, code, math)
+- ⚖️ **0.4-0.9**: Balance between accuracy and creativity (default: 0.7)
+- 🎨 **1.0-2.0**: Maximum creativity, experimental responses (writing, ideas)
+- 📊 Dynamic descriptions based on selected value
+- 🎨 Beautiful gradient slider with visual feedback
+
+**Use cases:**
+- Code generation: 0.1-0.3 for consistent results
+- General chat: 0.7 for balanced responses
+- Creative writing: 1.5-1.8 for unique ideas
+- Brainstorming: 1.2-2.0 for diverse suggestions
+
+---
+
+### 🎯 Meta-Prompting - Universal AI Assistant
 
 **The ultimate feature: ONE AI that adapts to ANY goal!**
 

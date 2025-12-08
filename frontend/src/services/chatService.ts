@@ -10,6 +10,7 @@ interface SendMessageOptions {
   autoSchema?: boolean;
   jsonSchema?: string;
   systemPrompt?: string;
+  temperature?: number;
 }
 
 export class ChatService {
@@ -24,7 +25,8 @@ export class ChatService {
       jsonMode: options.jsonMode || false,
       autoSchema: options.autoSchema || false,
       jsonSchema: options.jsonSchema,
-      systemPrompt: options.systemPrompt
+      systemPrompt: options.systemPrompt,
+      temperature: options.temperature
     };
 
     try {

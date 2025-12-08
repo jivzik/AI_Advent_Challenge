@@ -12,6 +12,7 @@ public class ChatRequest {
     private String jsonSchema; // Optional: Custom JSON schema for structured responses
     private boolean autoSchema = false; // Auto-generate JSON schema based on question
     private String systemPrompt; // Optional: System prompt to define agent personality
+    private Double temperature = 0.7; // Optional: Temperature parameter (0.0 - 2.0), default 0.7
 
     public ChatRequest() {
     }
@@ -81,6 +82,14 @@ public class ChatRequest {
 
     public void setSystemPrompt(String systemPrompt) {
         this.systemPrompt = systemPrompt;
+    }
+
+    public Double getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(Double temperature) {
+        this.temperature = temperature;
     }
 }
 

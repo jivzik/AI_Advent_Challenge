@@ -36,10 +36,11 @@ public class PerplexityToolClient {
      * Requests a chat completion from Perplexity API with conversation history.
      *
      * @param messages the conversation history (list of user and assistant messages)
+     * @param temperature the temperature parameter for response generation (0.0 - 2.0)
      * @return the AI's response
      * @throws ExternalServiceException if the API call fails
      */
-    public String requestCompletion(List<Message> messages) {
+    public String requestCompletion(List<Message> messages, Double temperature) {
         if (messages == null || messages.isEmpty()) {
             throw new IllegalArgumentException("Messages list cannot be empty");
         }
@@ -54,10 +55,11 @@ public class PerplexityToolClient {
             PerplexityRequest request = PerplexityRequest.builder()
                     .model(model)
                     .messages(perplexityMessages)
+                    .temperature(temperature)
                     .build();
 
-            log.info("🚀 Calling Perplexity API with model: {} and {} messages",
-                    model, messages.size());
+            log.info("🚀 Calling Perplexity API with model: {}, temperature: {} and {} messages",
+                    model, temperature, messages.size());
             log.debug("📝 Conversation history: {} messages", messages.size());
 
             return executeRequest(request);
@@ -67,6 +69,17 @@ public class PerplexityToolClient {
             log.error("❌ Exception in requestCompletion: {}", e.getMessage(), e);
             throw new ExternalServiceException("Failed to call Perplexity API: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Requests a chat completion from Perplexity API with conversation history and default temperature.
+     *
+     * @param messages the conversation history (list of user and assistant messages)
+     * @return the AI's response
+     * @throws ExternalServiceException if the API call fails
+     */
+    public String requestCompletion(List<Message> messages) {
+        return requestCompletion(messages, 0.7); // Default temperature
     }
 
     /**

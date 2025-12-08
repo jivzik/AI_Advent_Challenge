@@ -52,7 +52,7 @@ public class AgentService {
         historyManager.prepareHistory(history, request);
 
         // 3. Get response from LLM
-        String rawReply = getLlmResponse(history);
+        String rawReply = getLlmResponse(history, request.getTemperature());
 
         // 4. Parse response (if JSON mode enabled)
         String parsedReply = parseResponse(rawReply, request);
@@ -104,10 +104,11 @@ public class AgentService {
      * Gets response from the LLM.
      *
      * @param history The conversation history
+     * @param temperature The temperature parameter for response generation
      * @return The raw response from LLM
      */
-    private String getLlmResponse(List<Message> history) {
-        String rawReply = perplexityToolClient.requestCompletion(history);
+    private String getLlmResponse(List<Message> history, Double temperature) {
+        String rawReply = perplexityToolClient.requestCompletion(history, temperature);
         log.info("🔍 Raw reply from Perplexity (first 200 chars): {}",
                 rawReply.substring(0, Math.min(200, rawReply.length())));
         return rawReply;
