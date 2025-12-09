@@ -18,6 +18,9 @@
 // 5. Components (общие компоненты чата)
 @use 'components';
 
+// 5a. Chat Interface (специфичные стили для ChatInterface.vue)
+@use 'chat-interface';
+
 // 6. Meta Prompt (специфичные стили)
 @use 'meta-prompt';
 

@@ -13,6 +13,8 @@ public class ChatRequest {
     private boolean autoSchema = false; // Auto-generate JSON schema based on question
     private String systemPrompt; // Optional: System prompt to define agent personality
     private Double temperature = 0.7; // Optional: Temperature parameter (0.0 - 2.0), default 0.7
+    private String provider = "perplexity"; // Optional: AI provider (perplexity, openrouter), default perplexity
+    private String model; // Optional: Specific model to use (e.g., for OpenRouter)
 
     public ChatRequest() {
     }
@@ -90,6 +92,22 @@ public class ChatRequest {
 
     public void setTemperature(Double temperature) {
         this.temperature = temperature;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
     }
 }
 

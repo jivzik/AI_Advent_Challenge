@@ -7,11 +7,25 @@ export interface ChatRequest {
   jsonSchema?: string;
   systemPrompt?: string;
   temperature?: number;
+  provider?: string; // 'perplexity' or 'openrouter'
+  model?: string; // Optional model selection for OpenRouter
 }
+
+export interface ResponseMetrics {
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  cost: number | null;
+  responseTimeMs: number | null;
+  model: string | null;
+  provider: string | null;
+}
+
 export interface ChatResponse {
   reply: string;
   toolName: string;
   timestamp: string;
+  metrics?: ResponseMetrics; // Optional metrics from API response
 }
 export interface ChatMessage {
   id: string;

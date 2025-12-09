@@ -90,14 +90,15 @@ export class JsonFormatter {
       const keys = Object.keys(obj);
       keys.forEach((key, index) => {
         html += indent + '  ';
-        html += `<span class="json-key">"${key}"</span>: `;
+        html += `<span class="json-key">"${this.escapeHtml(key)}"</span>: `;
         html += this.createTreeView(obj[key], level + 1);
         if (index < keys.length - 1) html += '<span class="json-comma">,</span>';
         html += '\n';
       });
       html += indent + '<span class="json-bracket">}</span>';
     } else if (typeof obj === 'string') {
-      html += `<span class="json-string">"${obj}"</span>`;
+      const truncated = this.truncateString(obj, 200);
+      html += `<span class="json-string">"${this.escapeHtml(truncated)}"</span>`;
     } else if (typeof obj === 'number') {
       html += `<span class="json-number">${obj}</span>`;
     } else if (typeof obj === 'boolean') {
@@ -107,6 +108,28 @@ export class JsonFormatter {
     }
 
     return html;
+  }
+
+  /**
+   * Escapes HTML special characters
+   */
+  private static escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * Truncates long strings with ellipsis
+   */
+  private static truncateString(str: string, maxLength: number): string {
+    if (str.length <= maxLength) {
+      return str;
+    }
+    return str.substring(0, maxLength) + '... [truncated, ' + (str.length - maxLength) + ' more chars]';
   }
 }
 

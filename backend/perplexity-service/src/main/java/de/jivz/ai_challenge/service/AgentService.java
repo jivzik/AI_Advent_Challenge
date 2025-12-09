@@ -3,7 +3,10 @@ package de.jivz.ai_challenge.service;
 import de.jivz.ai_challenge.dto.ChatRequest;
 import de.jivz.ai_challenge.dto.ChatResponse;
 import de.jivz.ai_challenge.dto.Message;
+import de.jivz.ai_challenge.dto.ResponseMetrics;
 import de.jivz.ai_challenge.service.perplexity.PerplexityToolClient;
+import de.jivz.ai_challenge.service.openrouter.OpenRouterToolClient;
+import de.jivz.ai_challenge.service.openrouter.OpenRouterResponseWithMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,9 +28,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AgentService {
 
-    private static final String TOOL_NAME = "PerplexityToolClient";
-
     private final PerplexityToolClient perplexityToolClient;
+    private final OpenRouterToolClient openRouterToolClient;
     private final ConversationHistoryService historyService;
     private final MessageHistoryManager historyManager;
     private final JsonResponseParser jsonResponseParser;
@@ -40,6 +42,7 @@ public class AgentService {
      * @throws IllegalArgumentException if the message is empty
      */
     public ChatResponse handle(ChatRequest request) {
+        long requestStartTime = System.nanoTime();
         validateRequest(request);
 
         String conversationId = request.getConversationId();
@@ -51,8 +54,10 @@ public class AgentService {
         // 2. Prepare history with user message (and JSON instruction if needed)
         historyManager.prepareHistory(history, request);
 
-        // 3. Get response from LLM
-        String rawReply = getLlmResponse(history, request.getTemperature());
+        // 3. Get response from LLM with metrics
+        LlmResponseWithMetrics llmResponse = getLlmResponseWithMetrics(history, request.getTemperature(), request.getProvider(), request.getModel());
+        String rawReply = llmResponse.getReply();
+        ResponseMetrics metrics = llmResponse.getMetrics();
 
         // 4. Parse response (if JSON mode enabled)
         String parsedReply = parseResponse(rawReply, request);
@@ -60,7 +65,11 @@ public class AgentService {
         // 5. Save to history
         saveToHistory(history, parsedReply, conversationId);
 
-        return buildResponse(parsedReply);
+        long requestEndTime = System.nanoTime();
+        long totalRequestTimeMs = (requestEndTime - requestStartTime) / 1_000_000;
+        log.info("⏱️ Total request processing time: {} ms", totalRequestTimeMs);
+
+        return buildResponse(parsedReply, request.getProvider(), metrics);
     }
 
     /**
@@ -101,16 +110,67 @@ public class AgentService {
     }
 
     /**
-     * Gets response from the LLM.
+     * Gets response from the LLM with metrics.
      *
      * @param history The conversation history
      * @param temperature The temperature parameter for response generation
+     * @param provider The AI provider to use (perplexity or openrouter)
+     * @param model The specific model to use (optional)
+     * @return The response with metrics
+     */
+    private LlmResponseWithMetrics getLlmResponseWithMetrics(List<Message> history, Double temperature, String provider, String model) {
+        if ("openrouter".equalsIgnoreCase(provider)) {
+            OpenRouterResponseWithMetrics response = openRouterToolClient.requestCompletionWithMetrics(history, temperature, model);
+            String rawReply = response.getReply();
+            log.info("🔍 Raw reply from OpenRouter with model {} (first 200 chars): {}",
+                    model, rawReply.substring(0, Math.min(200, rawReply.length())));
+
+            ResponseMetrics metrics = new ResponseMetrics(
+                    response.getInputTokens(),
+                    response.getOutputTokens(),
+                    response.getTotalTokens(),
+                    response.getCost(),
+                    response.getResponseTimeMs(),
+                    response.getModel(),
+                    "openrouter"
+            );
+
+            return new LlmResponseWithMetrics(rawReply, metrics);
+        } else {
+            String rawReply = perplexityToolClient.requestCompletion(history, temperature);
+            log.info("🔍 Raw reply from Perplexity (first 200 chars): {}",
+                    rawReply.substring(0, Math.min(200, rawReply.length())));
+
+            // Perplexity doesn't return metrics in the current implementation
+            ResponseMetrics metrics = new ResponseMetrics(null, null, null, null, null, null, "perplexity");
+
+            return new LlmResponseWithMetrics(rawReply, metrics);
+        }
+    }
+
+    /**
+     * Gets response from the LLM (legacy method for compatibility).
+     *
+     * @param history The conversation history
+     * @param temperature The temperature parameter for response generation
+     * @param provider The AI provider to use (perplexity or openrouter)
+     * @param model The specific model to use (optional)
      * @return The raw response from LLM
      */
-    private String getLlmResponse(List<Message> history, Double temperature) {
-        String rawReply = perplexityToolClient.requestCompletion(history, temperature);
-        log.info("🔍 Raw reply from Perplexity (first 200 chars): {}",
-                rawReply.substring(0, Math.min(200, rawReply.length())));
+    @Deprecated
+    private String getLlmResponse(List<Message> history, Double temperature, String provider, String model) {
+        String rawReply;
+
+        if ("openrouter".equalsIgnoreCase(provider)) {
+            rawReply = openRouterToolClient.requestCompletion(history, temperature, model);
+            log.info("🔍 Raw reply from OpenRouter with model {} (first 200 chars): {}",
+                    model, rawReply.substring(0, Math.min(200, rawReply.length())));
+        } else {
+            rawReply = perplexityToolClient.requestCompletion(history, temperature);
+            log.info("🔍 Raw reply from Perplexity (first 200 chars): {}",
+                    rawReply.substring(0, Math.min(200, rawReply.length())));
+        }
+
         return rawReply;
     }
 
@@ -147,13 +207,49 @@ public class AgentService {
     }
 
     /**
-     * Builds the chat response DTO.
+     * Builds the chat response DTO with metrics.
      *
      * @param reply The parsed reply
+     * @param provider The AI provider used
+     * @param metrics The response metrics
      * @return The chat response
      */
-    private ChatResponse buildResponse(String reply) {
-        return new ChatResponse(reply, TOOL_NAME, Instant.now());
+    private ChatResponse buildResponse(String reply, String provider, ResponseMetrics metrics) {
+        String toolName = "openrouter".equalsIgnoreCase(provider) ? "OpenRouterToolClient" : "PerplexityToolClient";
+        return new ChatResponse(reply, toolName, Instant.now(), metrics);
+    }
+
+    /**
+     * Builds the chat response DTO (legacy method for compatibility).
+     *
+     * @param reply The parsed reply
+     * @param provider The AI provider used
+     * @return The chat response
+     */
+    @Deprecated
+    private ChatResponse buildResponse(String reply, String provider) {
+        String toolName = "openrouter".equalsIgnoreCase(provider) ? "OpenRouterToolClient" : "PerplexityToolClient";
+        return new ChatResponse(reply, toolName, Instant.now());
+    }
+
+    /**
+     * Helper class to hold LLM response with metrics.
+     */
+    private static class LlmResponseWithMetrics {
+        private final String reply;
+        private final ResponseMetrics metrics;
+
+        public LlmResponseWithMetrics(String reply, ResponseMetrics metrics) {
+            this.reply = reply;
+            this.metrics = metrics;
+        }
+
+        public String getReply() {
+            return reply;
+        }
+
+        public ResponseMetrics getMetrics() {
+            return metrics;
+        }
     }
 }
-

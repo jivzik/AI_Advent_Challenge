@@ -6,6 +6,7 @@ public class ChatResponse {
     private String reply;
     private String toolName;
     private Instant timestamp;
+    private ResponseMetrics metrics;
 
     public ChatResponse() {
     }
@@ -14,6 +15,13 @@ public class ChatResponse {
         this.reply = reply;
         this.toolName = toolName;
         this.timestamp = timestamp;
+    }
+
+    public ChatResponse(String reply, String toolName, Instant timestamp, ResponseMetrics metrics) {
+        this.reply = reply;
+        this.toolName = toolName;
+        this.timestamp = timestamp;
+        this.metrics = metrics;
     }
 
     public String getReply() {
@@ -38,5 +46,13 @@ public class ChatResponse {
 
     public void setTimestamp(Instant timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public ResponseMetrics getMetrics() {
+        return metrics;
+    }
+
+    public void setMetrics(ResponseMetrics metrics) {
+        this.metrics = metrics;
     }
 }

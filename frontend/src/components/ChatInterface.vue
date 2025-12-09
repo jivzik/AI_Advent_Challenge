@@ -1,10 +1,13 @@
 <template>
   <div class="chat-container">
-    <div class="chat-header">
+    <div class="chat-wrapper">
+      <!-- Chat Section -->
+      <div class="chat-section">
+        <div class="chat-header">
       <div class="header-content">
         <div>
           <h1>AI Chat Agent</h1>
-          <p>Powered by Perplexity AI</p>
+          <p>Powered by {{ currentModelLabel }}</p>
         </div>
         <div class="header-controls">
           <label class="json-toggle">
@@ -124,7 +127,31 @@
           :disabled="isLoading"
           class="chat-input"
         />
-        <button 
+        <!-- Model Selector Dropdown -->
+        <div class="model-selector">
+          <button
+            type="button"
+            @click="toggleModelDropdown"
+            :disabled="isLoading"
+            class="model-button"
+            :title="currentModelLabel"
+          >
+            {{ currentModelEmoji }}
+          </button>
+          <div v-if="showModelDropdown" class="model-dropdown">
+            <button
+              v-for="model in availableModels"
+              :key="model.id"
+              type="button"
+              @click="selectModel(model)"
+              :class="{ active: selectedModelId === model.id }"
+              class="model-option"
+            >
+              {{ model.emoji }} {{ model.name }}
+            </button>
+          </div>
+        </div>
+        <button
           type="submit" 
           :disabled="isLoading || !currentMessage.trim()"
           class="send-button"
@@ -133,19 +160,43 @@
         </button>
       </form>
     </div>
+      </div>
+      <!-- Metrics Sidebar -->
+      <div class="metrics-sidebar">
+        <MetricsCard v-if="lastMetrics" :metrics="lastMetrics" />
+        <div v-else class="metrics-empty">
+          <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <div class="empty-text">Metrics will appear here</div>
+            <div class="empty-hint">Send a message to see response metrics</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, nextTick, onMounted } from 'vue';
+import { ref, reactive, nextTick, onMounted, computed } from 'vue';
 import { ChatService } from '../services/chatService';
 import { JsonFormatter } from '../utils/jsonFormatter';
 import { marked } from 'marked';
+import MetricsCard from './MetricsCard.vue';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+}
+
+interface ResponseMetrics {
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  cost: number | null;
+  responseTimeMs: number | null;
+  model: string | null;
+  provider: string | null;
 }
 
 const messages = ref<Message[]>([]);
@@ -154,10 +205,58 @@ const isLoading = ref(false);
 const error = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
 const jsonResponseMode = ref(false);
-const autoSchemaMode = ref(true); // Auto-Schema is enabled by default when JSON mode is on
-const expandedJson = reactive<Record<number, boolean>>({}); // Track JSON view state per message (reactive!)
-const systemPrompt = ref('Ты дружелюбный ассистент, отвечай кратко и по делу.'); // Default system prompt
-const temperature = ref(0.7); // Default temperature value
+const autoSchemaMode = ref(true);
+const expandedJson = reactive<Record<number, boolean>>({});
+const messageMetrics = reactive<Record<number, ResponseMetrics | null>>({});
+const systemPrompt = ref('Ты дружелюбный ассистент, отвечай кратко и по делу.');
+const temperature = ref(0.7);
+const showModelDropdown = ref(false);
+
+// Available models with metadata
+const availableModels = [
+  { id: 'perplexity-sonar', name: 'Perplexity Sonar', emoji: '🔍', provider: 'perplexity', model: '' },
+  { id: 'claude-sonnet', name: 'Claude Sonnet', emoji: '🧠', provider: 'openrouter', model: 'anthropic/claude-sonnet-4' },
+  { id: 'gemma-3n', name: 'Gemma 3N', emoji: '✨', provider: 'openrouter', model: 'google/gemma-3n-e4b-it' },
+  { id: 'mistral-small', name: 'Mistral Small', emoji: '⚡', provider: 'openrouter', model: 'mistralai/mistral-small-24b-instruct-2501' },
+  { id: 'gpt-5', name: 'GPT-5 2025', emoji: '🚀', provider: 'openrouter', model: 'openai/gpt-5-2025-08-07' },
+];
+
+const selectedModelId = ref('perplexity-sonar');
+
+// Computed property for current model label
+const currentModelLabel = computed(() => {
+  const model = availableModels.find(m => m.id === selectedModelId.value);
+  return model ? model.name : 'Select Model';
+});
+
+// Computed property for current model emoji
+const currentModelEmoji = computed(() => {
+  const model = availableModels.find(m => m.id === selectedModelId.value);
+  return model ? model.emoji : '🤖';
+});
+
+// Computed property for current selected provider and model
+const selectedProvider = computed(() => {
+  const model = availableModels.find(m => m.id === selectedModelId.value);
+  return model?.provider || 'perplexity';
+});
+
+const selectedModel = computed(() => {
+  const model = availableModels.find(m => m.id === selectedModelId.value);
+  return model?.model || '';
+});
+
+
+// Computed property for last metrics
+const lastMetrics = computed(() => {
+  // Find the last assistant message's metrics
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    if (messages.value[i]?.role === 'assistant' && messageMetrics[i]) {
+      return messageMetrics[i];
+    }
+  }
+  return null;
+});
 
 // Configure marked for safe HTML rendering
 marked.setOptions({
@@ -223,6 +322,16 @@ const copyToClipboard = async (content: string) => {
   }
 };
 
+
+const toggleModelDropdown = () => {
+  showModelDropdown.value = !showModelDropdown.value;
+};
+
+const selectModel = (model: typeof availableModels[0]) => {
+  selectedModelId.value = model.id;
+  showModelDropdown.value = false;
+};
+
 const scrollToBottom = () => {
   nextTick(() => {
     if (messagesContainer.value) {
@@ -264,15 +373,25 @@ const sendMessage = async () => {
       jsonMode: jsonResponseMode.value,
       autoSchema: autoSchemaMode.value,
       systemPrompt: systemPrompt.value,
-      temperature: temperature.value
+      temperature: temperature.value,
+      provider: selectedProvider.value,
+      model: selectedModel.value || undefined
     });
 
     // Add assistant message to UI
+    const messageIndex = messages.value.length;
     messages.value.push({
       role: 'assistant',
       content: data.reply,
       timestamp: new Date(data.timestamp)
     });
+
+    // Store metrics for this message
+    if (data.metrics) {
+      messageMetrics[messageIndex] = data.metrics;
+      console.log('📊 Metrics stored for message:', data.metrics);
+    }
+
     scrollToBottom();
   } catch (err: any) {
     error.value = err.message || 'An error occurred';
@@ -303,4 +422,8 @@ onMounted(() => {
   console.log('Chat initialized with conversation ID:', conversationId.value);
 });
 </script>
+
+<style scoped lang="scss">
+@use '../styles/chat-interface';
+</style>
 
