@@ -219,6 +219,7 @@ const availableModels = [
   { id: 'gemma-3n', name: 'Gemma 3N', emoji: '✨', provider: 'openrouter', model: 'google/gemma-3n-e4b-it' },
   { id: 'mistral-small', name: 'Mistral Small', emoji: '⚡', provider: 'openrouter', model: 'mistralai/mistral-small-24b-instruct-2501' },
   { id: 'gpt-5', name: 'GPT-5 2025', emoji: '🚀', provider: 'openrouter', model: 'openai/gpt-5-2025-08-07' },
+  { id: 'gpt-5.1', name: 'GPT-5.1', emoji: '🚀', provider: 'openrouter', model: 'openai/gpt-5.1' },
 ];
 
 const selectedModelId = ref('perplexity-sonar');

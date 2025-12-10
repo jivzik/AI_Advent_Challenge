@@ -1,20 +1,21 @@
 package de.jivz.ai_challenge.service.openrouter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.jivz.ai_challenge.dto.Message;
 import de.jivz.ai_challenge.exception.ExternalServiceException;
 import de.jivz.ai_challenge.service.CostCalculationService;
 import de.jivz.ai_challenge.service.openrouter.model.OpenRouterRequest;
 import de.jivz.ai_challenge.service.openrouter.model.OpenRouterResponse;
+import de.jivz.ai_challenge.service.openrouter.model.OpenRouterResponseWithMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
 
 /**
  * OpenRouter API client implementation.
@@ -24,327 +25,217 @@ import java.util.stream.Collectors;
 @Component
 public class OpenRouterToolClient {
 
+    private static final double DEFAULT_TEMPERATURE = 0.7;
+    private static final int DEFAULT_MAX_TOKENS = 1000;
+    private static final double DEFAULT_TOP_P = 0.9;
+    private static final int LOG_PREVIEW_LENGTH = 100;
+
     private final WebClient webClient;
-    private final String model;
+    private final String defaultModel;
     private final CostCalculationService costCalculationService;
-    ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     public OpenRouterToolClient(
             @Qualifier("openRouterWebClient") WebClient webClient,
-            @Qualifier("openRouterModel") String model,
-            ObjectMapper objectMapper,
-            CostCalculationService costCalculationService) {
+            @Qualifier("openRouterModel") String defaultModel,
+            CostCalculationService costCalculationService,
+            ObjectMapper objectMapper) {
         this.webClient = webClient;
-        this.model = model;
-        this.objectMapper = objectMapper ;
+        this.defaultModel = defaultModel;
         this.costCalculationService = costCalculationService;
-        log.info("✅ OpenRouterToolClient initialized with WebClient and model: {}", model);
+        this.objectMapper = objectMapper;
+        log.info("OpenRouterToolClient initialized with model: {}", defaultModel);
     }
 
     /**
-     * Requests a chat completion from OpenRouter API with conversation history.
-     *
-     * @param messages the conversation history (list of user and assistant messages)
-     * @param temperature the temperature parameter for response generation (0.0 - 2.0)
-     * @param model the specific model to use (if null, uses default)
-     * @return the AI's response
-     * @throws ExternalServiceException if the API call fails
+     * Requests a chat completion with full metrics.
      */
-    public String requestCompletion(List<Message> messages, Double temperature, String model) {
+    public OpenRouterResponseWithMetrics requestCompletionWithMetrics(
+            List<Message> messages, Double temperature, String model) {
+        validateMessages(messages);
+
+        OpenRouterRequest request = buildRequest(messages, temperature, model);
+        log.info("Calling OpenRouter API with metrics - model: {}, temperature: {}, messages: {}",
+                resolveModel(model), temperature, messages.size());
+
+        return executeRequest(request);
+    }
+
+    private void validateMessages(List<Message> messages) {
         if (messages == null || messages.isEmpty()) {
-            throw new IllegalArgumentException("Messages list cannot be empty");
+            throw new IllegalArgumentException("Messages list cannot be null or empty");
         }
+    }
 
+    private OpenRouterRequest buildRequest(List<Message> messages, Double temperature, String model) {
+        List<OpenRouterRequest.ChatMessage> chatMessages = messages.stream()
+                .map(msg -> new OpenRouterRequest.ChatMessage(msg.getRole(), msg.getContent()))
+                .collect(Collectors.toList());
+
+        return OpenRouterRequest.builder()
+                .model(resolveModel(model))
+                .messages(chatMessages)
+                .temperature(temperature != null ? temperature : DEFAULT_TEMPERATURE)
+                .maxTokens(DEFAULT_MAX_TOKENS)
+                .topP(DEFAULT_TOP_P)
+                .build();
+    }
+
+    private String resolveModel(String model) {
+        return (model != null && !model.isBlank()) ? model : this.defaultModel;
+    }
+
+    private OpenRouterResponseWithMetrics executeRequest(OpenRouterRequest request) {
         try {
-            // Convert our Message DTOs to OpenRouter ChatMessage
-            List<OpenRouterRequest.ChatMessage> chatMessages = messages.stream()
-                    .map(msg -> new OpenRouterRequest.ChatMessage(msg.getRole(), msg.getContent()))
-                    .collect(Collectors.toList());
+            logRequest(request);
 
-            // Use provided model or default
-            String modelToUse = (model != null && !model.isBlank()) ? model : this.model;
+            long startTime = System.nanoTime();
+            OpenRouterResponse response = callApi(request);
+            long responseTimeMs = (System.nanoTime() - startTime) / 1_000_000;
 
-            // Build request with builder pattern
-            OpenRouterRequest request = OpenRouterRequest.builder()
-                    .model(modelToUse)
-                    .messages(chatMessages)
-                    .temperature(temperature)
-                    .maxTokens(4000)
-                    .topP(0.9)
-                    .build();
+            log.info("Received response from OpenRouter API in {} ms", responseTimeMs);
 
-            log.info("🚀 Calling OpenRouter API with model: {}, temperature: {} and {} messages",
-                    modelToUse, temperature, messages.size());
-            log.debug("📝 Conversation history: {} messages", messages.size());
+            return extractResponseWithMetrics(response, responseTimeMs);
 
-            return executeRequest(request);
         } catch (ExternalServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("❌ Exception in requestCompletion: {}", e.getMessage(), e);
-            throw new ExternalServiceException("Failed to call OpenRouter API: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Requests a chat completion from OpenRouter API with conversation history.
-     *
-     * @param messages the conversation history (list of user and assistant messages)
-     * @param temperature the temperature parameter for response generation (0.0 - 2.0)
-     * @return the AI's response
-     * @throws ExternalServiceException if the API call fails
-     */
-    public String requestCompletion(List<Message> messages, Double temperature) {
-        return requestCompletion(messages, temperature, null);
-    }
-
-    /**
-     * Requests a chat completion from OpenRouter API with conversation history and default temperature.
-     *
-     * @param messages the conversation history (list of user and assistant messages)
-     * @return the AI's response
-     * @throws ExternalServiceException if the API call fails
-     */
-    public String requestCompletion(List<Message> messages) {
-        return requestCompletion(messages, 0.7); // Default temperature
-    }
-
-    /**
-     * Requests a chat completion from OpenRouter API.
-     *
-     * @param input the user's message
-     * @return the AI's response
-     * @throws ExternalServiceException if the API call fails
-     */
-    public String requestCompletion(String input) {
-        try {
-            // Build request with builder pattern
-            OpenRouterRequest request = OpenRouterRequest.builder()
-                    .model(model)
-                    .addMessage("user", input)
-                    .temperature(0.7)
-                    .maxTokens(4000)
-                    .topP(0.9)
-                    .build();
-
-            log.info("🚀 Calling OpenRouter API with model: {}", model);
-            log.debug("📝 User message: {}", input);
-
-            return executeRequest(request);
-        } catch (ExternalServiceException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("❌ Exception in requestCompletion: {}", e.getMessage(), e);
-            throw new ExternalServiceException("Failed to call OpenRouter API: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Executes the API request to OpenRouter.
-     *
-     * @param request the OpenRouter request
-     * @return the AI's response
-     */
-    private String executeRequest(OpenRouterRequest request) {
-        try {
-            log.info ("📨 Sending request to OpenRouter API...");
-            log.info(objectMapper.writeValueAsString(request));
-
-            // Measure response time
-            long start = System.nanoTime();
-
-            // WebClient with type-safe OpenRouterResponse
-            OpenRouterResponse response = webClient.post()
-                    .uri("/chat/completions")
-                    .bodyValue(request)
-                    .retrieve()
-                    .onStatus(
-                            status -> status.is4xxClientError(),
-                            clientResponse -> {
-                                log.error("❌ 4xx Error: {}", clientResponse.statusCode());
-                                return Mono.error(new ExternalServiceException(
-                                        "OpenRouter API client error: " + clientResponse.statusCode()));
-                            }
-                    )
-                    .onStatus(
-                            status -> status.is5xxServerError(),
-                            clientResponse -> {
-                                log.error("❌ 5xx Error: {}", clientResponse.statusCode());
-                                return Mono.error(new ExternalServiceException(
-                                        "OpenRouter API server error: " + clientResponse.statusCode()));
-                            }
-                    )
-                    .bodyToMono(OpenRouterResponse.class)
-                    .block(); // Blocking for synchronous use
-
-            long end = System.nanoTime();
-            long responseTimeMs = (end - start) / 1_000_000;
-
-            log.info("✅ Received response from OpenRouter API {}", response);
-            log.info("⏱️ Response time: {} ms", responseTimeMs);
-
-            // Extract answer from choices[0].message.content (Chat Completions format)
-           if (response != null && response.getChoices() != null && !response.getChoices().isEmpty()) {
-                OpenRouterResponse.Choice firstChoice = response.getChoices().get(0);
-                if (firstChoice.getMessage() != null && firstChoice.getMessage().getContent() != null) {
-                    String reply = firstChoice.getMessage().getContent();
-                    log.info("💬 Reply preview: {}...", reply.substring(0, Math.min(100, reply.length())));
-
-                    if (response.getUsage() != null) {
-                        Integer promptTokens = response.getUsage().getPromptTokens();
-                        Integer completionTokens = response.getUsage().getCompletionTokens();
-                        Integer totalTokens = (promptTokens != null ? promptTokens : 0) +
-                                            (completionTokens != null ? completionTokens : 0);
-
-                        log.info("💰 Tokens - Input: {}, Output: {}, Total: {}",
-                                promptTokens, completionTokens, totalTokens);
-                        log.info("💵 Cost from API: {}", response.getUsage().getCost());
-
-                        // Calculate cost using configured pricing
-                        String modelUsed = response.getModel();
-                        if (promptTokens != null && completionTokens != null) {
-                            CostCalculationService.CostBreakdown costBreakdown =
-                                    costCalculationService.calculateCost(modelUsed, promptTokens, completionTokens);
-
-                            if (costBreakdown != null) {
-                                log.info("💵 Calculated cost: {}", costBreakdown.getFormattedString());
-                            } else {
-                                log.warn("⚠️ Unable to calculate cost - pricing not configured for model: {}", modelUsed);
-                            }
-                        }
-                    }
-                    return reply;
-                }
-            }
-
-            throw new ExternalServiceException("Unexpected response format from OpenRouter API");
-        } catch (ExternalServiceException e) {
-            throw e; // Re-throw custom exception
-        } catch (Exception e) {
-            log.error("❌ Exception in executeRequest: {}", e.getMessage(), e);
+            log.error("Failed to execute OpenRouter API request: {}", e.getMessage(), e);
             throw new ExternalServiceException("Failed to execute OpenRouter API request: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * Requests a chat completion from OpenRouter API with metrics.
-     *
-     * @param messages the conversation history
-     * @param temperature the temperature parameter
-     * @param model the specific model to use (if null, uses default)
-     * @return response with metrics
-     */
-    public OpenRouterResponseWithMetrics requestCompletionWithMetrics(List<Message> messages, Double temperature, String model) {
-        if (messages == null || messages.isEmpty()) {
-            throw new IllegalArgumentException("Messages list cannot be empty");
-        }
-
+    private void logRequest(OpenRouterRequest request) {
         try {
-            List<OpenRouterRequest.ChatMessage> chatMessages = messages.stream()
-                    .map(msg -> new OpenRouterRequest.ChatMessage(msg.getRole(), msg.getContent()))
-                    .collect(Collectors.toList());
-
-            String modelToUse = (model != null && !model.isBlank()) ? model : this.model;
-
-            OpenRouterRequest request = OpenRouterRequest.builder()
-                    .model(modelToUse)
-                    .messages(chatMessages)
-                    .temperature(temperature)
-                    .maxTokens(4000)
-                    .topP(0.9)
-                    .build();
-
-            return executeRequestWithMetrics(request);
-        } catch (ExternalServiceException e) {
-            throw e;
+            log.debug("Sending request to OpenRouter API");
+            log.trace("Request payload: {}", objectMapper.writeValueAsString(request));
         } catch (Exception e) {
-            log.error("❌ Exception in requestCompletionWithMetrics: {}", e.getMessage(), e);
-            throw new ExternalServiceException("Failed to call OpenRouter API: " + e.getMessage(), e);
+            log.warn("Failed to serialize request for logging: {}", e.getMessage());
         }
     }
 
-    /**
-     * Executes the API request and returns response with metrics.
-     *
-     * @param request the OpenRouter request
-     * @return response with metrics
-     */
-    private OpenRouterResponseWithMetrics executeRequestWithMetrics(OpenRouterRequest request) {
-        try {
-            log.info("📨 Sending request to OpenRouter API...");
-
-            long start = System.nanoTime();
-
-            OpenRouterResponse response = webClient.post()
-                    .uri("/chat/completions")
-                    .bodyValue(request)
-                    .retrieve()
-                    .onStatus(
-                            status -> status.is4xxClientError(),
-                            clientResponse -> {
-                                log.error("❌ 4xx Error: {}", clientResponse.statusCode());
-                                return Mono.error(new ExternalServiceException(
-                                        "OpenRouter API client error: " + clientResponse.statusCode()));
-                            }
-                    )
-                    .onStatus(
-                            status -> status.is5xxServerError(),
-                            clientResponse -> {
-                                log.error("❌ 5xx Error: {}", clientResponse.statusCode());
-                                return Mono.error(new ExternalServiceException(
-                                        "OpenRouter API server error: " + clientResponse.statusCode()));
-                            }
-                    )
-                    .bodyToMono(OpenRouterResponse.class)
-                    .block();
-
-            long end = System.nanoTime();
-            long responseTimeMs = (end - start) / 1_000_000;
-
-            log.info("✅ Received response from OpenRouter API");
-            log.info("⏱️ Response time: {} ms", responseTimeMs);
-
-           if (response != null && response.getChoices() != null && !response.getChoices().isEmpty()) {
-                OpenRouterResponse.Choice firstChoice = response.getChoices().get(0);
-                if (firstChoice.getMessage() != null && firstChoice.getMessage().getContent() != null) {
-                    String reply = firstChoice.getMessage().getContent();
-                    log.info("💬 Reply preview: {}...", reply.substring(0, Math.min(100, reply.length())));
-
-                    Integer inputTokens = null;
-                    Integer outputTokens = null;
-                    Integer totalTokens = null;
-                    Double cost = null;
-
-                    if (response.getUsage() != null) {
-                        inputTokens = response.getUsage().getPromptTokens();
-                        outputTokens = response.getUsage().getCompletionTokens();
-                        totalTokens = response.getUsage().getTotalTokens();
-                        cost = response.getUsage().getCost();
-
-                        log.info("💰 Tokens - Input: {}, Output: {}, Total: {}",
-                                inputTokens, outputTokens, totalTokens);
-                        log.info("💵 Cost: {}", cost);
+    private OpenRouterResponse callApi(OpenRouterRequest request) {
+        return webClient.post()
+                .uri("/chat/completions")
+                .bodyValue(request)
+                .retrieve()
+                .onStatus(
+                        HttpStatusCode::is4xxClientError,
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    log.error("OpenRouter API client error: {} - Body: {}",
+                                            clientResponse.statusCode(), errorBody);
+                                    return Mono.error(new ExternalServiceException(
+                                            "OpenRouter API client error: " + clientResponse.statusCode() +
+                                                    " - " + errorBody));
+                                })
+                )
+                .onStatus(
+                        HttpStatusCode::is5xxServerError,
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    log.error("OpenRouter API server error: {} - Body: {}",
+                                            clientResponse.statusCode(), errorBody);
+                                    return Mono.error(new ExternalServiceException(
+                                            "OpenRouter API server error: " + clientResponse.statusCode() +
+                                                    " - " + errorBody));
+                                })
+                )
+                .bodyToMono(OpenRouterResponse.class)
+                .doOnError(error -> {
+                    if (error.getMessage() != null && error.getMessage().contains("JSON decoding error")) {
+                        log.error("JSON parsing failed. This may happen if the response was truncated due to token limit.");
+                        log.error("Consider reducing maxTokens or handling streaming responses.");
                     }
+                })
+                .block();
+    }
 
-                    return new OpenRouterResponseWithMetrics(
-                            reply,
-                            inputTokens,
-                            outputTokens,
-                            totalTokens,
-                            cost,
-                            responseTimeMs,
-                            response.getModel()
-                    );
-                }
+    private OpenRouterResponseWithMetrics extractResponseWithMetrics(
+            OpenRouterResponse response, long responseTimeMs) {
+
+        if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
+            throw new ExternalServiceException("Empty or invalid response from OpenRouter API");
+        }
+
+        OpenRouterResponse.Choice firstChoice = response.getChoices().getFirst();
+        if (firstChoice.getMessage() == null || firstChoice.getMessage().getContent() == null) {
+            throw new ExternalServiceException("Response missing message content");
+        }
+
+        String reply = firstChoice.getMessage().getContent();
+        String finishReason = firstChoice.getFinishReason();
+
+        // Check if response was truncated due to token limit
+        if ("length".equals(finishReason)) {
+            log.warn("Response was truncated due to maxTokens limit. Consider increasing maxTokens or handling this case.");
+            log.warn("Finish reason: {}", finishReason);
+        }
+
+        logReplyPreview(reply);
+
+        OpenRouterResponse.Usage usage = response.getUsage();
+        Integer inputTokens = null;
+        Integer outputTokens = null;
+        Integer totalTokens = null;
+        Double cost = null;
+
+        if (usage != null) {
+            inputTokens = usage.getPromptTokens();
+            outputTokens = usage.getCompletionTokens();
+            totalTokens = usage.getTotalTokens();
+            cost = usage.getCost();
+
+            logUsageMetrics(response.getModel(), inputTokens, outputTokens, totalTokens, cost);
+
+            // Log if we hit the token limit
+            if (outputTokens != null && outputTokens >= DEFAULT_MAX_TOKENS * 0.95) {
+                log.warn("Output tokens ({}) are close to or at the maxTokens limit ({})",
+                        outputTokens, DEFAULT_MAX_TOKENS);
             }
+        }
 
-            throw new ExternalServiceException("Unexpected response format from OpenRouter API");
-        } catch (ExternalServiceException e) {
-            throw e;
+        return OpenRouterResponseWithMetrics.builder()
+                .reply(reply)
+                .inputTokens(inputTokens)
+                .outputTokens(outputTokens)
+                .totalTokens(totalTokens)
+                .cost(cost)
+                .responseTimeMs(responseTimeMs)
+                .model(response.getModel())
+                .build();
+    }
+
+    private void logReplyPreview(String reply) {
+        if (reply.length() > LOG_PREVIEW_LENGTH) {
+            log.debug("Reply preview: {}...", reply.substring(0, LOG_PREVIEW_LENGTH));
+        } else {
+            log.debug("Reply: {}", reply);
+        }
+    }
+
+    private void logUsageMetrics(String model, Integer inputTokens,
+                                 Integer outputTokens, Integer totalTokens, Double cost) {
+        log.info("Tokens - Input: {}, Output: {}, Total: {}", inputTokens, outputTokens, totalTokens);
+        log.info("Cost from API: ${}", cost);
+
+        if (inputTokens != null && outputTokens != null) {
+            calculateAndLogCost(model, inputTokens, outputTokens);
+        }
+    }
+
+    private void calculateAndLogCost(String model, Integer inputTokens, Integer outputTokens) {
+        try {
+            CostCalculationService.CostBreakdown costBreakdown =
+                    costCalculationService.calculateCost(model, inputTokens, outputTokens);
+
+            if (costBreakdown != null) {
+                log.info("Calculated cost: {}", costBreakdown.getFormattedString());
+            } else {
+                log.warn("Unable to calculate cost - pricing not configured for model: {}", model);
+            }
         } catch (Exception e) {
-            log.error("❌ Exception in executeRequestWithMetrics: {}", e.getMessage(), e);
-            throw new ExternalServiceException("Failed to execute OpenRouter API request: " + e.getMessage(), e);
+            log.warn("Failed to calculate cost: {}", e.getMessage());
         }
     }
 }
-

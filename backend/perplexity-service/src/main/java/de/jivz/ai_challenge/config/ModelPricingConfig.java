@@ -52,6 +52,9 @@ public class ModelPricingConfig {
         PRICING_MAP.put("perplexity/pplx-7b-online", new ModelPricing(0.07, 0.07));
         PRICING_MAP.put("perplexity/pplx-70b-online", new ModelPricing(0.75, 0.90));
         PRICING_MAP.put("perplexity/pplx-70b-chat", new ModelPricing(0.75, 1.00));
+
+        PRICING_MAP.put("sonar", new ModelPricing(3, 15));
+        PRICING_MAP.put("sonar-pro", new ModelPricing(3, 15));
     }
 
     /**

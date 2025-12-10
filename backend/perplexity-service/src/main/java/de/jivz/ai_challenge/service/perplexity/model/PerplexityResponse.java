@@ -1,10 +1,17 @@
 package de.jivz.ai_challenge.service.perplexity.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
+
 import java.util.List;
 
 /**
  * Response DTOs for Perplexity API.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class PerplexityResponse {
 
     private String id;
@@ -16,116 +23,28 @@ public class PerplexityResponse {
     private List<SearchResult> searchResults;
     private String object;
 
-    // Getters and Setters
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getModel() {
-        return model;
-    }
-
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public Long getCreated() {
-        return created;
-    }
-
-    public void setCreated(Long created) {
-        this.created = created;
-    }
-
-    public List<Choice> getChoices() {
-        return choices;
-    }
-
-    public void setChoices(List<Choice> choices) {
-        this.choices = choices;
-    }
-
-    public Usage getUsage() {
-        return usage;
-    }
-
-    public void setUsage(Usage usage) {
-        this.usage = usage;
-    }
-
-    public List<String> getCitations() {
-        return citations;
-    }
-
-    public void setCitations(List<String> citations) {
-        this.citations = citations;
-    }
-
-    public List<SearchResult> getSearchResults() {
-        return searchResults;
-    }
-
-    public void setSearchResults(List<SearchResult> searchResults) {
-        this.searchResults = searchResults;
-    }
-
-    public String getObject() {
-        return object;
-    }
-
-    public void setObject(String object) {
-        this.object = object;
-    }
-
     /**
      * Choice in the response.
      */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class Choice {
         private Integer index;
         private Message message;
         private Delta delta;
         private String finishReason;
 
-        public Integer getIndex() {
-            return index;
-        }
-
-        public void setIndex(Integer index) {
-            this.index = index;
-        }
-
-        public Message getMessage() {
-            return message;
-        }
-
-        public void setMessage(Message message) {
-            this.message = message;
-        }
-
-        public Delta getDelta() {
-            return delta;
-        }
-
-        public void setDelta(Delta delta) {
-            this.delta = delta;
-        }
-
-        public String getFinishReason() {
-            return finishReason;
-        }
-
-        public void setFinishReason(String finishReason) {
-            this.finishReason = finishReason;
-        }
     }
 
     /**
      * Message in the choice.
      */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class Message {
         private String role;
         private String content;
@@ -150,123 +69,62 @@ public class PerplexityResponse {
     /**
      * Delta for streaming responses.
      */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class Delta {
         private String role;
         private String content;
 
-        public String getRole() {
-            return role;
-        }
-
-        public void setRole(String role) {
-            this.role = role;
-        }
-
-        public String getContent() {
-            return content;
-        }
-
-        public void setContent(String content) {
-            this.content = content;
-        }
     }
 
     /**
      * Usage statistics.
      */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class Usage {
+        @JsonProperty("prompt_tokens")
         private Integer promptTokens;
+        @JsonProperty("completion_tokens")
         private Integer completionTokens;
+        @JsonProperty("total_tokens")
         private Integer totalTokens;
+        @JsonProperty("search_context_size")
         private String searchContextSize;
-        private Cost cost;
-
-        public Integer getPromptTokens() {
-            return promptTokens;
-        }
-
-        public void setPromptTokens(Integer promptTokens) {
-            this.promptTokens = promptTokens;
-        }
-
-        public Integer getCompletionTokens() {
-            return completionTokens;
-        }
-
-        public void setCompletionTokens(Integer completionTokens) {
-            this.completionTokens = completionTokens;
-        }
-
-        public Integer getTotalTokens() {
-            return totalTokens;
-        }
-
-        public void setTotalTokens(Integer totalTokens) {
-            this.totalTokens = totalTokens;
-        }
-
-        public String getSearchContextSize() {
-            return searchContextSize;
-        }
-
-        public void setSearchContextSize(String searchContextSize) {
-            this.searchContextSize = searchContextSize;
-        }
-
-        public Cost getCost() {
-            return cost;
-        }
-
-        public void setCost(Cost cost) {
-            this.cost = cost;
-        }
+        @JsonProperty("reasoning_tokens")
+        private Integer reasoningTokens;
+        @JsonProperty("citation_tokens")
+        private Integer citationTokens;
+        @JsonProperty("num_search_queries")
+        private Integer numSearchQueries;
     }
 
     /**
      * Cost information.
      */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class Cost {
         private Double inputTokensCost;
         private Double outputTokensCost;
         private Double requestCost;
         private Double totalCost;
 
-        public Double getInputTokensCost() {
-            return inputTokensCost;
-        }
-
-        public void setInputTokensCost(Double inputTokensCost) {
-            this.inputTokensCost = inputTokensCost;
-        }
-
-        public Double getOutputTokensCost() {
-            return outputTokensCost;
-        }
-
-        public void setOutputTokensCost(Double outputTokensCost) {
-            this.outputTokensCost = outputTokensCost;
-        }
-
-        public Double getRequestCost() {
-            return requestCost;
-        }
-
-        public void setRequestCost(Double requestCost) {
-            this.requestCost = requestCost;
-        }
-
-        public Double getTotalCost() {
-            return totalCost;
-        }
-
-        public void setTotalCost(Double totalCost) {
-            this.totalCost = totalCost;
-        }
     }
 
     /**
      * Search result from Perplexity.
      */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class SearchResult {
         private String title;
         private String url;
@@ -275,53 +133,6 @@ public class PerplexityResponse {
         private String snippet;
         private String source;
 
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
-
-        public String getUrl() {
-            return url;
-        }
-
-        public void setUrl(String url) {
-            this.url = url;
-        }
-
-        public String getDate() {
-            return date;
-        }
-
-        public void setDate(String date) {
-            this.date = date;
-        }
-
-        public String getLastUpdated() {
-            return lastUpdated;
-        }
-
-        public void setLastUpdated(String lastUpdated) {
-            this.lastUpdated = lastUpdated;
-        }
-
-        public String getSnippet() {
-            return snippet;
-        }
-
-        public void setSnippet(String snippet) {
-            this.snippet = snippet;
-        }
-
-        public String getSource() {
-            return source;
-        }
-
-        public void setSource(String source) {
-            this.source = source;
-        }
     }
 }
 

@@ -1,16 +1,21 @@
 package de.jivz.ai_challenge.service.perplexity;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.jivz.ai_challenge.dto.Message;
 import de.jivz.ai_challenge.exception.ExternalServiceException;
+import de.jivz.ai_challenge.service.CostCalculationService;
 import de.jivz.ai_challenge.service.perplexity.model.PerplexityRequest;
 import de.jivz.ai_challenge.service.perplexity.model.PerplexityResponse;
+import de.jivz.ai_challenge.service.perplexity.model.PerplexityResponseWithMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -21,152 +26,227 @@ import java.util.stream.Collectors;
 @Component
 public class PerplexityToolClient {
 
+    private static final double DEFAULT_TEMPERATURE = 0.7;
+    private static final int DEFAULT_MAX_TOKENS = 500;
+    private static final double DEFAULT_TOP_P = 0.9;
+    private static final int LOG_PREVIEW_LENGTH = 100;
+
     private final WebClient webClient;
-    private final String model;
+    private final String defaultModel;
+    private final CostCalculationService costCalculationService;
+    private final ObjectMapper objectMapper;
 
     public PerplexityToolClient(
             @Qualifier("perplexityWebClient") WebClient webClient,
-            @Qualifier("perplexityModel") String model) {
+            @Qualifier("perplexityModel") String defaultModel,
+            CostCalculationService costCalculationService,
+            ObjectMapper objectMapper) {
         this.webClient = webClient;
-        this.model = model;
-        log.info("✅ PerplexityToolClient initialized with WebClient and model: {}", model);
+        this.defaultModel = defaultModel;
+        this.costCalculationService = costCalculationService;
+        this.objectMapper = objectMapper;
+        log.info("PerplexityToolClient initialized with model: {}", defaultModel);
     }
 
     /**
-     * Requests a chat completion from Perplexity API with conversation history.
-     *
-     * @param messages the conversation history (list of user and assistant messages)
-     * @param temperature the temperature parameter for response generation (0.0 - 2.0)
-     * @return the AI's response
-     * @throws ExternalServiceException if the API call fails
+     * Requests a chat completion with full metrics.
      */
-    public String requestCompletion(List<Message> messages, Double temperature) {
+    public PerplexityResponseWithMetrics requestCompletionWithMetrics(
+            List<Message> messages, Double temperature, String model) {
+        validateMessages(messages);
+
+        PerplexityRequest request = buildRequest(messages, temperature, model);
+        log.info("Calling Perplexity API with metrics - model: {}, temperature: {}, messages: {}",
+                resolveModel(model), temperature, messages.size());
+
+        return executeRequest(request);
+    }
+
+
+    private void validateMessages(List<Message> messages) {
         if (messages == null || messages.isEmpty()) {
-            throw new IllegalArgumentException("Messages list cannot be empty");
+            throw new IllegalArgumentException("Messages list cannot be null or empty");
         }
+    }
 
+    private PerplexityRequest buildRequest(List<Message> messages, Double temperature, String model) {
+        List<PerplexityRequest.Message> perplexityMessages = messages.stream()
+                .map(msg -> new PerplexityRequest.Message(msg.getRole(), msg.getContent()))
+                .collect(Collectors.toList());
+
+        return PerplexityRequest.builder()
+                .model(resolveModel(model))
+                .messages(perplexityMessages)
+                .temperature(temperature != null ? temperature : DEFAULT_TEMPERATURE)
+                .maxTokens(DEFAULT_MAX_TOKENS)
+                //.topP(DEFAULT_TOP_P)
+                .build();
+    }
+
+    private String resolveModel(String model) {
+        return (model != null && !model.isBlank()) ? model : this.defaultModel;
+    }
+
+    private PerplexityResponseWithMetrics executeRequest(PerplexityRequest request) {
         try {
-            // Konvertiere unsere Message-DTOs zu Perplexity-Request-Messages
-            List<PerplexityRequest.Message> perplexityMessages = messages.stream()
-                    .map(msg -> new PerplexityRequest.Message(msg.getRole(), msg.getContent()))
-                    .collect(Collectors.toList());
+            logRequest(request);
 
-            // Typsicherer Request mit Builder-Pattern
-            PerplexityRequest request = PerplexityRequest.builder()
-                    .model(model)
-                    .messages(perplexityMessages)
-                    .temperature(temperature)
-                    .build();
+            long startTime = System.nanoTime();
+            PerplexityResponse response = callApi(request);
+            long responseTimeMs = (System.nanoTime() - startTime) / 1_000_000;
 
-            log.info("🚀 Calling Perplexity API with model: {}, temperature: {} and {} messages",
-                    model, temperature, messages.size());
-            log.debug("📝 Conversation history: {} messages", messages.size());
+            log.info("Received response from Perplexity API in {} ms", responseTimeMs);
 
-            return executeRequest(request);
+            return extractResponseWithMetrics(response, responseTimeMs);
+
         } catch (ExternalServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("❌ Exception in requestCompletion: {}", e.getMessage(), e);
-            throw new ExternalServiceException("Failed to call Perplexity API: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Requests a chat completion from Perplexity API with conversation history and default temperature.
-     *
-     * @param messages the conversation history (list of user and assistant messages)
-     * @return the AI's response
-     * @throws ExternalServiceException if the API call fails
-     */
-    public String requestCompletion(List<Message> messages) {
-        return requestCompletion(messages, 0.7); // Default temperature
-    }
-
-    /**
-     * Requests a chat completion from Perplexity API.
-     *
-     * @param input the user's message
-     * @return the AI's response
-     * @throws ExternalServiceException if the API call fails
-     */
-    public String requestCompletion(String input) {
-        try {
-            // Type-safe request with builder pattern
-            PerplexityRequest request = PerplexityRequest.builder()
-                    .model(model)
-                    .addMessage("user", input)
-                    .build();
-
-            log.info("🚀 Calling Perplexity API with model: {}", model);
-            log.debug("📝 User message: {}", input);
-
-            return executeRequest(request);
-        } catch (ExternalServiceException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("❌ Exception in requestCompletion: {}", e.getMessage(), e);
-            throw new ExternalServiceException("Failed to call Perplexity API: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Executes the API request to Perplexity.
-     *
-     * @param request the Perplexity request
-     * @return the AI's response
-     */
-    private String executeRequest(PerplexityRequest request) {
-        try {
-            // WebClient with type-safe PerplexityResponse
-            PerplexityResponse response = webClient.post()
-                    .uri("/chat/completions")
-                    .bodyValue(request)
-                    .retrieve()
-                    .onStatus(
-                            status -> status.is4xxClientError(),
-                            clientResponse -> {
-                                log.error("❌ 4xx Error: {}", clientResponse.statusCode());
-                                return Mono.error(new ExternalServiceException(
-                                        "Perplexity API client error: " + clientResponse.statusCode()));
-                            }
-                    )
-                    .onStatus(
-                            status -> status.is5xxServerError(),
-                            clientResponse -> {
-                                log.error("❌ 5xx Error: {}", clientResponse.statusCode());
-                                return Mono.error(new ExternalServiceException(
-                                        "Perplexity API server error: " + clientResponse.statusCode()));
-                            }
-                    )
-                    .bodyToMono(PerplexityResponse.class)
-                    .block(); // Blocking for synchronous use
-
-            log.info("✅ Received response from Perplexity API {}", response);
-
-            // Extract answer from choices[0].message.content (type-safe!)
-            if (response != null && response.getChoices() != null && !response.getChoices().isEmpty()) {
-                PerplexityResponse.Choice firstChoice = response.getChoices().get(0);
-                if (firstChoice.getMessage() != null && firstChoice.getMessage().getContent() != null) {
-                    String reply = firstChoice.getMessage().getContent();
-                    log.info("💬 Reply preview: {}...", reply.substring(0, Math.min(100, reply.length())));
-
-                    if (response.getCitations() != null && !response.getCitations().isEmpty()) {
-                        log.info("📚 Citations: {} sources", response.getCitations().size());
-                    }
-                    if (response.getUsage() != null) {
-                        log.info("💰 Usage: {} tokens", response.getUsage().getTotalTokens());
-                    }
-
-                    return reply;
-                }
-            }
-
-            throw new ExternalServiceException("Unexpected response format from Perplexity API");
-        } catch (ExternalServiceException e) {
-            throw e; // Re-throw custom exception
-        } catch (Exception e) {
-            log.error("❌ Exception in executeRequest: {}", e.getMessage(), e);
+            log.error("Failed to execute Perplexity API request: {}", e.getMessage(), e);
             throw new ExternalServiceException("Failed to execute Perplexity API request: " + e.getMessage(), e);
         }
+    }
+
+    private void logRequest(PerplexityRequest request) {
+        try {
+            log.debug("Sending request to Perplexity API");
+            log.trace("Request payload: {}", objectMapper.writeValueAsString(request));
+        } catch (Exception e) {
+            log.warn("Failed to serialize request for logging: {}", e.getMessage());
+        }
+    }
+
+    private PerplexityResponse callApi(PerplexityRequest request) {
+        return webClient.post()
+                .uri("/chat/completions")
+                .bodyValue(request)
+                .retrieve()
+                .onStatus(
+                        HttpStatusCode::is4xxClientError,
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    log.error("Perplexity API client error: {} - Body: {}",
+                                            clientResponse.statusCode(), errorBody);
+                                    return Mono.error(new ExternalServiceException(
+                                            "Perplexity API client error: " + clientResponse.statusCode() +
+                                                    " - " + errorBody));
+                                })
+                )
+                .onStatus(
+                        HttpStatusCode::is5xxServerError,
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    log.error("Perplexity API server error: {} - Body: {}",
+                                            clientResponse.statusCode(), errorBody);
+                                    return Mono.error(new ExternalServiceException(
+                                            "Perplexity API server error: " + clientResponse.statusCode() +
+                                                    " - " + errorBody));
+                                })
+                )
+                .bodyToMono(PerplexityResponse.class)
+                .doOnError(error -> {
+                    if (error.getMessage() != null && error.getMessage().contains("JSON decoding error")) {
+                        log.error("JSON parsing failed. This may happen if the response was truncated due to token limit.");
+                        log.error("Consider reducing maxTokens or handling streaming responses.");
+                    }
+                })
+                .block();
+    }
+
+    private PerplexityResponseWithMetrics extractResponseWithMetrics(
+            PerplexityResponse response, long responseTimeMs) {
+        if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
+            throw new ExternalServiceException("Empty or invalid response from Perplexity API");
+        }
+
+        PerplexityResponse.Choice firstChoice = response.getChoices().getFirst();
+        if (firstChoice.getMessage() == null || firstChoice.getMessage().getContent() == null) {
+            throw new ExternalServiceException("Response missing message content");
+        }
+
+        String reply = firstChoice.getMessage().getContent();
+        String finishReason = firstChoice.getFinishReason();
+
+        // Check if response was truncated due to token limit
+        if ("length".equals(finishReason)) {
+            log.warn("Response was truncated due to maxTokens limit. Consider increasing maxTokens or handling this case.");
+            log.warn("Finish reason: {}", finishReason);
+        }
+
+        logReplyPreview(reply);
+
+        // Log citations if available
+        if (response.getCitations() != null && !response.getCitations().isEmpty()) {
+            log.info("Citations: {} sources", response.getCitations().size());
+        }
+
+        PerplexityResponse.Usage usage = response.getUsage();
+        Integer inputTokens = null;
+        Integer outputTokens = null;
+        Integer totalTokens = null;
+        Double cost = null;
+
+        if (usage != null) {
+            inputTokens = usage.getPromptTokens();
+            outputTokens = usage.getCompletionTokens();
+            totalTokens = usage.getTotalTokens();
+            if (inputTokens != null && outputTokens != null) {
+                cost = Objects.requireNonNull(calculateAndLogCost(response.getModel(), inputTokens, outputTokens)).getTotalCost();
+            }
+
+            logUsageMetrics(response.getModel(), inputTokens, outputTokens, totalTokens, cost);
+
+            // Log if we hit the token limit
+            if (outputTokens != null && outputTokens >= DEFAULT_MAX_TOKENS * 0.95) {
+                log.warn("Output tokens ({}) are close to or at the maxTokens limit ({})",
+                        outputTokens, DEFAULT_MAX_TOKENS);
+            }
+        }
+
+        return PerplexityResponseWithMetrics.builder()
+                .reply(reply)
+                .inputTokens(inputTokens)
+                .outputTokens(outputTokens)
+                .totalTokens(totalTokens)
+                .cost(cost)
+                .responseTimeMs(responseTimeMs)
+                .model(response.getModel())
+                //.citations(response.getCitations())
+                .build();
+    }
+
+    private void logReplyPreview(String reply) {
+        if (reply.length() > LOG_PREVIEW_LENGTH) {
+            log.debug("Reply preview: {}...", reply.substring(0, LOG_PREVIEW_LENGTH));
+        } else {
+            log.debug("Reply: {}", reply);
+        }
+    }
+
+    private void logUsageMetrics(String model, Integer inputTokens,
+                                 Integer outputTokens, Integer totalTokens, Double cost) {
+        log.info("Tokens - Input: {}, Output: {}, Total: {}", inputTokens, outputTokens, totalTokens);
+        log.info("Cost from API: ${}", cost);
+
+        if (inputTokens != null && outputTokens != null) {
+            calculateAndLogCost(model, inputTokens, outputTokens);
+        }
+    }
+
+    private CostCalculationService.CostBreakdown calculateAndLogCost(String model, Integer inputTokens, Integer outputTokens) {
+        try {
+            CostCalculationService.CostBreakdown costBreakdown =
+                    costCalculationService.calculateCost(model, inputTokens, outputTokens);
+
+            if (costBreakdown != null) {
+                log.info("Calculated cost: {}", costBreakdown.getFormattedString());
+            } else {
+                log.warn("Unable to calculate cost - pricing not configured for model: {}", model);
+            }
+            return costBreakdown;
+        } catch (Exception e) {
+            log.warn("Failed to calculate cost: {}", e.getMessage());
+        }
+        return null;
     }
 }
