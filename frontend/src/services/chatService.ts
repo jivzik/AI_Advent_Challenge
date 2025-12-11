@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse, ErrorResponse } from '../types/chat';
+import type {ChatRequest, ChatResponse, CompressionInfo, ErrorResponse} from '../types/chat';
 
 const API_BASE_URL = 'http://localhost:8080/api/chat';
 
@@ -131,4 +131,28 @@ export class ChatService {
       throw new Error('Failed to get conversation stats');
     }
   }
-}
+
+  static async getCompressionInfo(conversationId: string): Promise<CompressionInfo> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/compression-info/${conversationId}`);
+      if (!response.ok) {
+        throw new Error('Failed to get compression info');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch compression info:', error);
+      // Return default values if request fails
+      return {
+        conversationId,
+        fullHistorySize: 0,
+        compressedHistorySize: 0,
+        compressed: false,
+        messagesSaved: 0,
+        compressionRatio: '0%',
+        estimatedTokensSaved: 0,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  }

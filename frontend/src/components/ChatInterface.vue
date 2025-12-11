@@ -163,7 +163,7 @@
       </div>
       <!-- Metrics Sidebar -->
       <div class="metrics-sidebar">
-        <MetricsCard v-if="lastMetrics" :metrics="lastMetrics" />
+        <MetricsCard v-if="lastMetrics" :metrics="lastMetrics"  :compressionInfo="compressionInfo"/>
         <div v-else class="metrics-empty">
           <div class="empty-state">
             <div class="empty-icon">📊</div>
@@ -182,6 +182,7 @@ import { ChatService } from '../services/chatService';
 import { JsonFormatter } from '../utils/jsonFormatter';
 import { marked } from 'marked';
 import MetricsCard from './MetricsCard.vue';
+import type {CompressionInfo, ResponseMetrics} from "../types/chat.ts";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -189,15 +190,6 @@ interface Message {
   timestamp: Date;
 }
 
-interface ResponseMetrics {
-  inputTokens: number | null;
-  outputTokens: number | null;
-  totalTokens: number | null;
-  cost: number | null;
-  responseTimeMs: number | null;
-  model: string | null;
-  provider: string | null;
-}
 
 const messages = ref<Message[]>([]);
 const currentMessage = ref('');
@@ -211,6 +203,7 @@ const messageMetrics = reactive<Record<number, ResponseMetrics | null>>({});
 const systemPrompt = ref('Ты дружелюбный ассистент, отвечай кратко и по делу.');
 const temperature = ref(0.7);
 const showModelDropdown = ref(false);
+const compressionInfo = ref<CompressionInfo | null>(null);
 
 // Available models with metadata
 const availableModels = [
@@ -392,7 +385,7 @@ const sendMessage = async () => {
       messageMetrics[messageIndex] = data.metrics;
       console.log('📊 Metrics stored for message:', data.metrics);
     }
-
+    await fetchCompressionInfo();
     scrollToBottom();
   } catch (err: any) {
     error.value = err.message || 'An error occurred';
@@ -416,6 +409,19 @@ const clearConversation = async () => {
   } catch (err: any) {
     error.value = 'Error clearing conversation: ' + err.message;
     console.error('Error clearing conversation:', err);
+  }
+};
+
+const fetchCompressionInfo = async () => {
+  if (!conversationId.value) return;
+
+  try {
+    const info = await ChatService.getCompressionInfo(conversationId.value);
+    compressionInfo.value = info;
+
+    console.log('🗜️ Compression info loaded:', info);
+  } catch (error) {
+    console.error('Failed to fetch compression info:', error);
   }
 };
 

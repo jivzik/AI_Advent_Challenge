@@ -21,6 +21,17 @@ export interface ResponseMetrics {
   provider: string | null;
 }
 
+export interface CompressionInfo {
+  conversationId: string;
+  fullHistorySize: number;
+  compressedHistorySize: number;
+  compressed: boolean;
+  messagesSaved: number;
+  compressionRatio: string;
+  estimatedTokensSaved: number;
+  timestamp: string;
+}
+
 export interface ChatResponse {
   reply: string;
   toolName: string;

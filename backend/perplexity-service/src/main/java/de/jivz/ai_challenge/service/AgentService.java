@@ -22,6 +22,7 @@ import java.util.List;
  * - Validate requests
  * - Orchestrate the conversation flow
  * - Coordinate between history, parsing, and LLM services
+ * - Automatically compress history when threshold is reached
  */
 @Slf4j
 @Service
@@ -33,6 +34,7 @@ public class AgentService {
     private final ConversationHistoryService historyService;
     private final MessageHistoryManager historyManager;
     private final JsonResponseParser jsonResponseParser;
+    private final DialogCompressionService compressionService;
 
     /**
      * Handles a chat request and returns the response.
@@ -48,8 +50,8 @@ public class AgentService {
         String conversationId = request.getConversationId();
         logRequestInfo(request, conversationId);
 
-        // 1. Load conversation history
-        List<Message> history = loadHistory(conversationId);
+        // 1. Load conversation history (with automatic compression if needed)
+        List<Message> history = loadHistoryWithCompression(conversationId);
 
         // 2. Prepare history with user message (and JSON instruction if needed)
         historyManager.prepareHistory(history, request);
@@ -97,16 +99,44 @@ public class AgentService {
     }
 
     /**
-     * Loads conversation history from storage.
+     * ⭐ UPDATED: Loads conversation history with automatic compression.
+     *
+     * Automatically checks if compression is needed and uses compressed version if available.
+     * This happens transparently - the user doesn't know about compression.
+     *
+     * Flow:
+     * 1. Load full history
+     * 2. Check if compression threshold reached (10+ messages)
+     * 3. If yes - compress and save compressed version
+     * 4. Use compressed version if available, otherwise use full
      *
      * @param conversationId The conversation identifier
-     * @return The conversation history
+     * @return The conversation history (compressed or full)
      */
-    private List<Message> loadHistory(String conversationId) {
-        List<Message> history = historyService.getHistory(conversationId);
+    private List<Message> loadHistoryWithCompression(String conversationId) {
+        // Load full history
+        List<Message> fullHistory = historyService.getHistory(conversationId);
         log.info("📚 Loaded {} previous messages for conversation: {}",
-                history.size(), conversationId);
-        return history;
+                fullHistory.size(), conversationId);
+
+        // Check if compression is needed and perform it
+        boolean wasCompressed = compressionService.checkAndCompress(conversationId);
+
+        if (wasCompressed) {
+            log.info("🗜️ History was compressed, using compressed version");
+        }
+
+        // Try to use compressed version if available
+        if (compressionService.hasCompressedVersion(conversationId)) {
+            List<Message> compressedHistory = compressionService.getCompressedHistory(conversationId);
+            log.info("✅ Using compressed history: {} messages (original: {})",
+                    compressedHistory.size(), fullHistory.size());
+            return compressedHistory;
+        }
+
+        // Otherwise use full history
+        log.debug("Using full history (compression not applicable yet)");
+        return fullHistory;
     }
 
     /**
@@ -175,7 +205,10 @@ public class AgentService {
     }
 
     /**
-     * Saves the conversation to history.
+     * ⭐ UPDATED: Saves conversation to BOTH full and compressed history.
+     *
+     * Always saves to full history (for compression source).
+     * If compressed version exists, also updates it with the new message.
      *
      * @param history        The conversation history
      * @param reply          The assistant's reply
@@ -183,9 +216,28 @@ public class AgentService {
      */
     private void saveToHistory(List<Message> history, String reply, String conversationId) {
         historyManager.addAssistantResponse(history, reply);
-        historyService.saveHistory(conversationId, history);
-        log.info("💾 Saved conversation history ({} messages) for conversationId: {}",
-                history.size(), conversationId);
+
+        // Determine if we're working with compressed or full history
+        boolean isCompressed = compressionService.hasCompressedVersion(conversationId) &&
+                history.size() < historyService.getHistory(conversationId).size();
+
+        if (isCompressed) {
+            // Save back to compressed version
+            String compressedId = conversationId + "_compressed";
+            historyService.saveHistory(compressedId, history);
+            log.info("💾 Saved to compressed history ({} messages)", history.size());
+
+            // Also add to full history
+            List<Message> fullHistory = historyService.getHistory(conversationId);
+            fullHistory.add(new Message("assistant", reply));
+            historyService.saveHistory(conversationId, fullHistory);
+            log.info("💾 Also saved to full history ({} messages)", fullHistory.size());
+        } else {
+            // Save to full history only
+            historyService.saveHistory(conversationId, history);
+            log.info("💾 Saved conversation history ({} messages) for conversationId: {}",
+                    history.size(), conversationId);
+        }
     }
 
     /**

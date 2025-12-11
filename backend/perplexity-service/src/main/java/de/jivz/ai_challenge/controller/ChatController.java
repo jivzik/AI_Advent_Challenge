@@ -1,8 +1,10 @@
 package de.jivz.ai_challenge.controller;
 import de.jivz.ai_challenge.dto.ChatRequest;
 import de.jivz.ai_challenge.dto.ChatResponse;
+import de.jivz.ai_challenge.dto.CompressionInfo;
 import de.jivz.ai_challenge.service.AgentService;
 import de.jivz.ai_challenge.service.ConversationHistoryService;
+import de.jivz.ai_challenge.service.DialogCompressionService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +21,14 @@ import java.util.Map;
 public class ChatController {
     private final AgentService agentService;
     private final ConversationHistoryService historyService;
+    private final DialogCompressionService compressionService;
+
 
     public ChatController(AgentService agentService,
-                          ConversationHistoryService historyService) {
+                          ConversationHistoryService historyService, DialogCompressionService compressionService) {
         this.agentService = agentService;
         this.historyService = historyService;
+        this.compressionService = compressionService;
     }
     /**
      * Processes a chat request and returns the AI response.
@@ -37,20 +42,6 @@ public class ChatController {
         ChatResponse response = agentService.handle(request);
 
         return ResponseEntity.ok(response);
-    }
-
-
-    /**
-     * Health check endpoint.
-     * 
-     * @return service health status
-     */
-    @GetMapping("/health")
-    public ResponseEntity<Map<String, String>> health() {
-        return ResponseEntity.ok(Map.of(
-                "status", "UP",
-                "timestamp", Instant.now().toString()
-        ));
     }
 
     /**
@@ -71,6 +62,25 @@ public class ChatController {
     }
 
     /**
+     * ⭐ NEW: Gets compression information for a conversation.
+     * All business logic is in DialogCompressionService.
+     *
+     * @param conversationId the conversation identifier
+     * @return compression information
+     */
+    @GetMapping("/compression-info/{conversationId}")
+    public ResponseEntity<CompressionInfo> getCompressionInfo(
+            @PathVariable String conversationId) {
+
+        log.info("Getting compression info for conversationId: {}", conversationId);
+
+        CompressionInfo info = compressionService.getCompressionInfo(conversationId);
+
+        return ResponseEntity.ok(info);
+    }
+
+
+    /**
      * Gets statistics about active conversations.
      *
      * @return conversation statistics
@@ -79,6 +89,20 @@ public class ChatController {
     public ResponseEntity<Map<String, Object>> getStats() {
         return ResponseEntity.ok(Map.of(
                 "activeConversations", historyService.getConversationCount(),
+                "timestamp", Instant.now().toString()
+        ));
+    }
+
+
+    /**
+     * Health check endpoint.
+     *
+     * @return service health status
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        return ResponseEntity.ok(Map.of(
+                "status", "UP",
                 "timestamp", Instant.now().toString()
         ));
     }
