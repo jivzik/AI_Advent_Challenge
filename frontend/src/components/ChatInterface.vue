@@ -1,165 +1,173 @@
 <template>
   <div class="chat-container">
+    <!-- Conversation Sidebar -->
+    <ConversationSidebar
+        ref="sidebarRef"
+        :activeConversationId="conversationId"
+        @select="handleConversationSelect"
+        @delete="handleConversationDelete"
+        @newConversation="handleNewConversation"
+    />
     <div class="chat-wrapper">
       <!-- Chat Section -->
       <div class="chat-section">
         <div class="chat-header">
-      <div class="header-content">
-        <div>
-          <h1>AI Chat Agent</h1>
-          <p>Powered by {{ currentModelLabel }}</p>
-        </div>
-        <div class="header-controls">
-          <label class="json-toggle">
-            <input
-              type="checkbox"
-              v-model="jsonResponseMode"
-              :disabled="isLoading"
-            />
-            <span>JSON-Antworten</span>
-          </label>
-          <label v-if="jsonResponseMode" class="auto-schema-toggle">
-            <input
-              type="checkbox"
-              v-model="autoSchemaMode"
-              :disabled="isLoading"
-            />
-            <span>🤖 Auto-Schema</span>
-          </label>
-          <button
-            v-if="messages.length > 0"
-            @click="clearConversation"
-            class="clear-button"
-            :disabled="isLoading"
-            title="Start new conversation"
-          >
-            🗑️ New Conversation
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- System Prompt Section -->
-    <div class="system-prompt-section">
-      <div class="system-prompt-header">
-        <span class="system-prompt-label">🎭 System Prompt</span>
-        <span class="system-prompt-hint">(Defines AI personality - can be changed mid-conversation)</span>
-      </div>
-      <textarea
-        v-model="systemPrompt"
-        class="system-prompt-input"
-        placeholder="Ты дружелюбный ассистент, отвечай кратко и по делу."
-        :disabled="isLoading"
-        rows="2"
-      ></textarea>
-    </div>
-
-    <!-- Temperature Control Section -->
-    <div class="temperature-section">
-      <div class="temperature-header">
-        <span class="temperature-label">🌡️ Temperature</span>
-        <span class="temperature-value">{{ temperature.toFixed(1) }}</span>
-      </div>
-      <div class="temperature-description">
-        {{ getTemperatureDescription() }}
-      </div>
-      <input
-        type="range"
-        v-model.number="temperature"
-        min="0"
-        max="2"
-        step="0.1"
-        class="temperature-slider"
-        :disabled="isLoading"
-      />
-      <div class="temperature-range-labels">
-        <span class="range-label-left">0 — Точность</span>
-        <span class="range-label-center">1 — Баланс</span>
-        <span class="range-label-right">2 — Креативность</span>
-      </div>
-    </div>
-
-    <div class="chat-messages" ref="messagesContainer">
-      <div 
-        v-for="(msg, index) in messages" 
-        :key="index" 
-        :class="['message', msg.role]"
-      >
-        <div class="message-content">
-          <div class="message-role">{{ msg.role === 'user' ? 'You' : 'AI Agent' }}</div>
-          <div class="message-text markdown-content" v-if="!isJsonContent(msg.content)" v-html="renderMarkdown(msg.content)"></div>
-          <div v-else class="message-json">
-            <div class="json-header">
-              <span class="json-badge">JSON</span>
-              <button @click="copyToClipboard(msg.content)" class="copy-button" title="Copy JSON">
-                📋 Copy
-              </button>
-              <button @click="toggleJsonView(index)" class="toggle-button" title="Toggle view">
-                {{ expandedJson[index] ? '📄 Raw' : '📖 Tree' }}
+          <div class="header-content">
+            <div>
+              <h1>AI Chat Agent</h1>
+              <p>Powered by {{ currentModelLabel }}</p>
+            </div>
+            <div class="header-controls">
+              <label class="json-toggle">
+                <input
+                    type="checkbox"
+                    v-model="jsonResponseMode"
+                    :disabled="isLoading"
+                />
+                <span>JSON-Antworten</span>
+              </label>
+              <label v-if="jsonResponseMode" class="auto-schema-toggle">
+                <input
+                    type="checkbox"
+                    v-model="autoSchemaMode"
+                    :disabled="isLoading"
+                />
+                <span>🤖 Auto-Schema</span>
+              </label>
+              <button
+                  v-if="messages.length > 0"
+                  @click="clearConversation"
+                  class="clear-button"
+                  :disabled="isLoading"
+                  title="Start new conversation"
+              >
+                🗑️ New Conversation
               </button>
             </div>
-            <pre v-if="!expandedJson[index]" class="json-formatted" v-html="formatJsonHtml(msg.content)"></pre>
-            <div v-else class="json-tree" v-html="createJsonTree(msg.content)"></div>
-          </div>
-          <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
-        </div>
-      </div>
-      <div v-if="isLoading" class="message assistant loading">
-        <div class="message-content">
-          <div class="message-role">AI Agent</div>
-          <div class="typing-indicator">
-            <span></span>
-            <span></span>
-            <span></span>
           </div>
         </div>
-      </div>
-    </div>
-    <div class="chat-input-container">
-      <div v-if="error" class="error-message">
-        {{ error }}
-      </div>
-      <form @submit.prevent="sendMessage" class="chat-input-form">
-        <input
-          v-model="currentMessage"
-          type="text"
-          placeholder="Type your message..."
-          :disabled="isLoading"
-          class="chat-input"
-        />
-        <!-- Model Selector Dropdown -->
-        <div class="model-selector">
-          <button
-            type="button"
-            @click="toggleModelDropdown"
-            :disabled="isLoading"
-            class="model-button"
-            :title="currentModelLabel"
+
+        <!-- System Prompt Section -->
+        <div class="system-prompt-section">
+          <div class="system-prompt-header">
+            <span class="system-prompt-label">🎭 System Prompt</span>
+            <span class="system-prompt-hint">(Defines AI personality - can be changed mid-conversation)</span>
+          </div>
+          <textarea
+              v-model="systemPrompt"
+              class="system-prompt-input"
+              placeholder="Ты дружелюбный ассистент, отвечай кратко и по делу."
+              :disabled="isLoading"
+              rows="2"
+          ></textarea>
+        </div>
+
+        <!-- Temperature Control Section -->
+        <div class="temperature-section">
+          <div class="temperature-header">
+            <span class="temperature-label">🌡️ Temperature</span>
+            <span class="temperature-value">{{ temperature.toFixed(1) }}</span>
+          </div>
+          <div class="temperature-description">
+            {{ getTemperatureDescription() }}
+          </div>
+          <input
+              type="range"
+              v-model.number="temperature"
+              min="0"
+              max="2"
+              step="0.1"
+              class="temperature-slider"
+              :disabled="isLoading"
+          />
+          <div class="temperature-range-labels">
+            <span class="range-label-left">0 — Точность</span>
+            <span class="range-label-center">1 — Баланс</span>
+            <span class="range-label-right">2 — Креативность</span>
+          </div>
+        </div>
+
+        <div class="chat-messages" ref="messagesContainer">
+          <div
+              v-for="(msg, index) in messages"
+              :key="index"
+              :class="['message', msg.role]"
           >
-            {{ currentModelEmoji }}
-          </button>
-          <div v-if="showModelDropdown" class="model-dropdown">
-            <button
-              v-for="model in availableModels"
-              :key="model.id"
-              type="button"
-              @click="selectModel(model)"
-              :class="{ active: selectedModelId === model.id }"
-              class="model-option"
-            >
-              {{ model.emoji }} {{ model.name }}
-            </button>
+            <div class="message-content">
+              <div class="message-role">{{ msg.role === 'user' ? 'You' : 'AI Agent' }}</div>
+              <div class="message-text markdown-content" v-if="!isJsonContent(msg.content)" v-html="renderMarkdown(msg.content)"></div>
+              <div v-else class="message-json">
+                <div class="json-header">
+                  <span class="json-badge">JSON</span>
+                  <button @click="copyToClipboard(msg.content)" class="copy-button" title="Copy JSON">
+                    📋 Copy
+                  </button>
+                  <button @click="toggleJsonView(index)" class="toggle-button" title="Toggle view">
+                    {{ expandedJson[index] ? '📄 Raw' : '📖 Tree' }}
+                  </button>
+                </div>
+                <pre v-if="!expandedJson[index]" class="json-formatted" v-html="formatJsonHtml(msg.content)"></pre>
+                <div v-else class="json-tree" v-html="createJsonTree(msg.content)"></div>
+              </div>
+              <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
+            </div>
+          </div>
+          <div v-if="isLoading" class="message assistant loading">
+            <div class="message-content">
+              <div class="message-role">AI Agent</div>
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
           </div>
         </div>
-        <button
-          type="submit" 
-          :disabled="isLoading || !currentMessage.trim()"
-          class="send-button"
-        >
-          {{ isLoading ? 'Sending...' : 'Send' }}
-        </button>
-      </form>
-    </div>
+        <div class="chat-input-container">
+          <div v-if="error" class="error-message">
+            {{ error }}
+          </div>
+          <form @submit.prevent="sendMessage" class="chat-input-form">
+            <input
+                v-model="currentMessage"
+                type="text"
+                placeholder="Type your message..."
+                :disabled="isLoading"
+                class="chat-input"
+            />
+            <!-- Model Selector Dropdown -->
+            <div class="model-selector">
+              <button
+                  type="button"
+                  @click="toggleModelDropdown"
+                  :disabled="isLoading"
+                  class="model-button"
+                  :title="currentModelLabel"
+              >
+                {{ currentModelEmoji }}
+              </button>
+              <div v-if="showModelDropdown" class="model-dropdown">
+                <button
+                    v-for="model in availableModels"
+                    :key="model.id"
+                    type="button"
+                    @click="selectModel(model)"
+                    :class="{ active: selectedModelId === model.id }"
+                    class="model-option"
+                >
+                  {{ model.emoji }} {{ model.name }}
+                </button>
+              </div>
+            </div>
+            <button
+                type="submit"
+                :disabled="isLoading || !currentMessage.trim()"
+                class="send-button"
+            >
+              {{ isLoading ? 'Sending...' : 'Send' }}
+            </button>
+          </form>
+        </div>
       </div>
       <!-- Metrics Sidebar -->
       <div class="metrics-sidebar">
@@ -182,14 +190,11 @@ import { ChatService } from '../services/chatService';
 import { JsonFormatter } from '../utils/jsonFormatter';
 import { marked } from 'marked';
 import MetricsCard from './MetricsCard.vue';
-import type {CompressionInfo, ResponseMetrics} from "../types/chat.ts";
+import ConversationSidebar from './ConversationSidebar.vue';
+import type { CompressionInfo, ResponseMetrics, Message } from "../types/types";
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
-
+// ⭐ Message interface now imported from types.ts!
+// No local duplicate interface
 
 const messages = ref<Message[]>([]);
 const currentMessage = ref('');
@@ -204,6 +209,7 @@ const systemPrompt = ref('Ты дружелюбный ассистент, отв
 const temperature = ref(0.7);
 const showModelDropdown = ref(false);
 const compressionInfo = ref<CompressionInfo | null>(null);
+const sidebarRef = ref<InstanceType<typeof ConversationSidebar> | null>(null);
 
 // Available models with metadata
 const availableModels = [
@@ -334,7 +340,10 @@ const scrollToBottom = () => {
   });
 };
 
-const formatTime = (date: Date) => {
+const formatTime = (timestamp?: Date | string): string => {
+  if (!timestamp) return '';
+
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
   return date.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit'
@@ -425,6 +434,62 @@ const fetchCompressionInfo = async () => {
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// CONVERSATION SIDEBAR HANDLERS
+// ═══════════════════════════════════════════════════════════════════
+
+const handleConversationSelect = async (selectedConversationId: string) => {
+  console.log('📂 Loading conversation:', selectedConversationId);
+
+  // Switch to the selected conversation
+  conversationId.value = selectedConversationId;
+  error.value = '';
+  compressionInfo.value = null;
+
+  try {
+    // ⭐ Load conversation messages from backend
+    isLoading.value = true;
+    const history = await ChatService.getConversationHistory(selectedConversationId);
+
+    console.log('✅ Loaded messages:', history.length);
+
+    // Display messages in chat
+    messages.value = history;
+
+    // Scroll to bottom after messages are rendered
+    nextTick(() => {
+      scrollToBottom();
+    });
+
+    // Refresh compression info for the selected conversation
+    await fetchCompressionInfo();
+
+  } catch (err) {
+    console.error('❌ Failed to load conversation history:', err);
+    error.value = 'Failed to load conversation history';
+    messages.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const handleConversationDelete = (deletedConversationId: string) => {
+  // If the deleted conversation is the current one, start a new one
+  if (conversationId.value === deletedConversationId) {
+    handleNewConversation();
+  }
+  console.log('🗑️ Conversation deleted:', deletedConversationId);
+};
+
+const handleNewConversation = () => {
+  // Create a new conversation
+  messages.value = [];
+  error.value = '';
+  compressionInfo.value = null;
+  conversationId.value = 'conv-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  console.log('✨ New conversation started. ID:', conversationId.value);
+};
+
 onMounted(() => {
   console.log('Chat initialized with conversation ID:', conversationId.value);
 });
@@ -433,4 +498,3 @@ onMounted(() => {
 <style scoped lang="scss">
 @use '../styles/chat-interface';
 </style>
-

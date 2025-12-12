@@ -1,6 +1,7 @@
-import type {ChatRequest, ChatResponse, CompressionInfo, ErrorResponse} from '../types/chat';
+import type { ConversationSummary, Message, CompressionInfo, ChatRequest, ChatResponse, ErrorResponse } from '../types/types';
 
 const API_BASE_URL = 'http://localhost:8080/api/chat';
+const MEMORY_API_BASE_URL = 'http://localhost:8080/api/memory';
 
 interface SendMessageOptions {
   message: string;
@@ -15,7 +16,20 @@ interface SendMessageOptions {
   model?: string;
 }
 
+/**
+ * Response from GET /api/memory/conversations
+ */
+interface GetConversationsResponse {
+  totalConversations: number;
+  conversations: ConversationSummary[];
+  timestamp: string;
+}
+
 export class ChatService {
+  // =========================================
+  // CHAT METHODS (original)
+  // =========================================
+
   /**
    * Send message with options object (new method for better ergonomics)
    */
@@ -61,11 +75,11 @@ export class ChatService {
    * Original sendMessage method (kept for backward compatibility)
    */
   static async sendMessage(
-    message: string,
-    userId: string | undefined,
-    conversationId: string | undefined,
-    jsonMode: boolean,
-    autoSchema: boolean = false
+      message: string,
+      userId: string | undefined,
+      conversationId: string | undefined,
+      jsonMode: boolean,
+      autoSchema: boolean = false
   ): Promise<ChatResponse> {
     const request: ChatRequest = {
       message,
@@ -95,6 +109,10 @@ export class ChatService {
       throw new Error('An unexpected error occurred');
     }
   }
+
+  /**
+   * Check backend health
+   */
   static async checkHealth(): Promise<{ status: string; timestamp: string }> {
     try {
       const response = await fetch(`${API_BASE_URL}/health`);
@@ -107,6 +125,9 @@ export class ChatService {
     }
   }
 
+  /**
+   * Clear conversation history
+   */
   static async clearConversation(conversationId: string): Promise<void> {
     try {
       const response = await fetch(`${API_BASE_URL}/conversation/${conversationId}`, {
@@ -120,6 +141,9 @@ export class ChatService {
     }
   }
 
+  /**
+   * Get conversation stats
+   */
   static async getStats(): Promise<{ activeConversations: number; timestamp: string }> {
     try {
       const response = await fetch(`${API_BASE_URL}/stats`);
@@ -132,27 +156,61 @@ export class ChatService {
     }
   }
 
-  static async getCompressionInfo(conversationId: string): Promise<CompressionInfo> {
+  /**
+   * Get compression info for a conversation
+   */
+  static async getCompressionInfo(conversationId: string): Promise<CompressionInfo | null> {
     try {
       const response = await fetch(`${API_BASE_URL}/compression-info/${conversationId}`);
       if (!response.ok) {
-        throw new Error('Failed to get compression info');
+        console.warn('Compression info not available');
+        return null;  // ⭐ Kein Error!
       }
       return await response.json();
     } catch (error) {
-      console.error('Failed to fetch compression info:', error);
-      // Return default values if request fails
-      return {
-        conversationId,
-        fullHistorySize: 0,
-        compressedHistorySize: 0,
-        compressed: false,
-        messagesSaved: 0,
-        compressionRatio: '0%',
-        estimatedTokensSaved: 0,
-        timestamp: new Date().toISOString()
-      };
+      console.warn('Failed to fetch compression info:', error);
+      return null;  // ⭐ Kein Error!
     }
   }
 
+  // =========================================
+  // MEMORY/PERSISTENCE METHODS (new)
+  // =========================================
+
+  /**
+   * Get list of all conversations
+   */
+  static async getConversations(): Promise<GetConversationsResponse> {
+    const response = await fetch(`${MEMORY_API_BASE_URL}/conversations`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch conversations');
+    }
+    return response.json();
   }
+
+  /**
+   * Get full message history for a conversation
+   */
+  static async getConversationHistory(conversationId: string): Promise<Message[]> {
+    const response = await fetch(`${MEMORY_API_BASE_URL}/conversation/${conversationId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch conversation history');
+    }
+    const data = await response.json();
+
+    // Backend returns: { messageCount, conversationId, messages: [...] }
+    return data.messages || [];
+  }
+
+  /**
+   * Delete a conversation from memory
+   */
+  static async deleteConversation(conversationId: string): Promise<void> {
+    const response = await fetch(`${MEMORY_API_BASE_URL}/conversation/${conversationId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete conversation');
+    }
+  }
+}

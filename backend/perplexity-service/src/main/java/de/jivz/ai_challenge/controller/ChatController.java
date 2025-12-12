@@ -9,8 +9,10 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.time.Instant;
+
+import java.util.Date;
 import java.util.Map;
+
 /**
  * REST Controller for chat endpoints.
  * Exception handling is delegated to GlobalExceptionHandler.
@@ -57,7 +59,7 @@ public class ChatController {
         return ResponseEntity.ok(Map.of(
                 "status", "cleared",
                 "conversationId", conversationId,
-                "timestamp", Instant.now().toString()
+                "timestamp", new Date().toString()
         ));
     }
 
@@ -89,7 +91,7 @@ public class ChatController {
     public ResponseEntity<Map<String, Object>> getStats() {
         return ResponseEntity.ok(Map.of(
                 "activeConversations", historyService.getConversationCount(),
-                "timestamp", Instant.now().toString()
+                "timestamp", new Date().toString()
         ));
     }
 
@@ -103,7 +105,7 @@ public class ChatController {
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of(
                 "status", "UP",
-                "timestamp", Instant.now().toString()
+                "timestamp", new Date().toString()
         ));
     }
 }

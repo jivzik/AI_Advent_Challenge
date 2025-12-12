@@ -123,7 +123,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import type {CompressionInfo, ResponseMetrics} from "../types/chat.ts";
+import type {CompressionInfo, ResponseMetrics} from "../types/types.ts";
 
 interface Props {
   metrics: ResponseMetrics | null | undefined;
@@ -154,38 +154,21 @@ const outputPercentage = computed(() => {
 </script>
 
 <style scoped lang="scss">
+@use '../styles/mixins' as *;
+
 .metrics-card {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  border: 2px solid #3498db;
-  border-radius: 12px;
+  // ⭐ Используем тот же mixin что и ConversationSidebar!
+  @include sidebar-card;
+
   padding: 16px;
   margin: 16px 0;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   font-size: 14px;
-  transition: all 0.3s ease;
-
-  &:hover {
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
-  }
 }
 
 .metrics-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  @include sidebar-card-header;
   cursor: pointer;
   user-select: none;
-}
-
-.metrics-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #2c3e50;
-  font-size: 16px;
 
   .metrics-icon {
     font-size: 18px;
@@ -237,19 +220,8 @@ const outputPercentage = computed(() => {
 }
 
 .metrics-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 8px;
-  border: 1px solid rgba(52, 152, 219, 0.3);
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: #3498db;
-  }
+  // ⭐ Используем mixin для единого стиля!
+  @include sidebar-card-item;
 
   &.highlight {
     background: rgba(46, 204, 113, 0.2);

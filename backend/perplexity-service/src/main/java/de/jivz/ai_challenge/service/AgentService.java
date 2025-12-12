@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -35,6 +34,7 @@ public class AgentService {
     private final MessageHistoryManager historyManager;
     private final JsonResponseParser jsonResponseParser;
     private final DialogCompressionService compressionService;
+    private final MemoryService memoryService;  // ⭐ NEW: PostgreSQL persistence
 
     /**
      * Handles a chat request and returns the response.
@@ -48,6 +48,7 @@ public class AgentService {
         validateRequest(request);
 
         String conversationId = request.getConversationId();
+        String userId = request.getUserId();
         logRequestInfo(request, conversationId);
 
         // 1. Load conversation history (with automatic compression if needed)
@@ -55,6 +56,10 @@ public class AgentService {
 
         // 2. Prepare history with user message (and JSON instruction if needed)
         historyManager.prepareHistory(history, request);
+
+        // ⭐ NEW: Save user message to PostgreSQL
+        memoryService.saveMessage(conversationId, userId, "user", request.getMessage(), null, null);
+        log.debug("💾 Saved user message to database");
 
         // 3. Get response from LLM with metrics
         ChatResponse llmResponse = getLlmResponseWithMetrics(history, request.getTemperature(), request.getProvider(), request.getModel());
@@ -64,8 +69,13 @@ public class AgentService {
         // 4. Parse response (if JSON mode enabled)
         String parsedReply = parseResponse(rawReply, request);
 
-        // 5. Save to history
+        // 5. Save to history (RAM)
         saveToHistory(history, parsedReply, conversationId);
+
+        // ⭐ NEW: Save assistant response to PostgreSQL with metrics
+        String modelName = metrics != null ? metrics.getModel() : request.getModel();
+        memoryService.saveMessage(conversationId, userId, "assistant", parsedReply, modelName, metrics);
+        log.debug("💾 Saved assistant message to database with metrics");
 
         long requestEndTime = System.nanoTime();
         long totalRequestTimeMs = (requestEndTime - requestStartTime) / 1_000_000;
@@ -99,44 +109,55 @@ public class AgentService {
     }
 
     /**
-     * ⭐ UPDATED: Loads conversation history with automatic compression.
+     * ⭐ UPDATED: Loads conversation history with automatic compression and summary reuse.
      *
-     * Automatically checks if compression is needed and uses compressed version if available.
-     * This happens transparently - the user doesn't know about compression.
+     * Key improvements:
+     * 1. Checks if a saved summary exists in PostgreSQL
+     * 2. If yes - uses summary + recent messages (saves tokens!)
+     * 3. If no - loads full history
+     * 4. Automatically checks if new compression is needed
+     * 5. Uses compressed version if available
+     *
+     * Token savings:
+     * - Summary created once, reused forever (0 tokens to create)
+     * - Only recent messages after summary are sent
+     * - LLM understands full context with fewer tokens
      *
      * Flow:
-     * 1. Load full history
-     * 2. Check if compression threshold reached (10+ messages)
-     * 3. If yes - compress and save compressed version
-     * 4. Use compressed version if available, otherwise use full
+     * 1. Try to load optimized history with saved summary
+     * 2. Check if compression threshold reached (5+ messages)
+     * 3. If yes - compress and save summary
+     * 4. Use compressed version if available, otherwise optimized history
      *
      * @param conversationId The conversation identifier
-     * @return The conversation history (compressed or full)
+     * @return The conversation history (optimized with summary or full)
      */
     private List<Message> loadHistoryWithCompression(String conversationId) {
-        // Load full history
-        List<Message> fullHistory = historyService.getHistory(conversationId);
-        log.info("📚 Loaded {} previous messages for conversation: {}",
-                fullHistory.size(), conversationId);
+        // ⭐ FIRST: Try to load with saved summary from PostgreSQL
+        List<Message> optimizedHistory = memoryService.loadHistoryForLLM(conversationId);
+        log.info("📚 Loaded {} messages for conversation: {} (using saved summary if available)",
+                optimizedHistory.size(), conversationId);
 
         // Check if compression is needed and perform it
         boolean wasCompressed = compressionService.checkAndCompress(conversationId);
 
         if (wasCompressed) {
-            log.info("🗜️ History was compressed, using compressed version");
+            log.info("🗜️ History was compressed, new summary saved to PostgreSQL");
+            // Reload with the newly created summary
+            return memoryService.loadHistoryForLLM(conversationId);
         }
 
-        // Try to use compressed version if available
+        // Try to use compressed version if available (for RAM cache efficiency)
         if (compressionService.hasCompressedVersion(conversationId)) {
             List<Message> compressedHistory = compressionService.getCompressedHistory(conversationId);
-            log.info("✅ Using compressed history: {} messages (original: {})",
-                    compressedHistory.size(), fullHistory.size());
+            log.info("✅ Using compressed history from RAM: {} messages (optimized: {})",
+                    compressedHistory.size(), optimizedHistory.size());
             return compressedHistory;
         }
 
-        // Otherwise use full history
-        log.debug("Using full history (compression not applicable yet)");
-        return fullHistory;
+        // Otherwise use optimized history (with saved summary if available)
+        log.debug("Using optimized history with saved summary (compression not needed yet)");
+        return optimizedHistory;
     }
 
     /**
@@ -250,6 +271,6 @@ public class AgentService {
      */
     private ChatResponse buildResponse(String reply, String provider, ResponseMetrics metrics) {
         String toolName = "openrouter".equalsIgnoreCase(provider) ? "OpenRouterToolClient" : "PerplexityToolClient";
-        return new ChatResponse(reply, toolName, Instant.now(), metrics);
+        return new ChatResponse(reply, toolName, new java.util.Date(), metrics);
     }
 }

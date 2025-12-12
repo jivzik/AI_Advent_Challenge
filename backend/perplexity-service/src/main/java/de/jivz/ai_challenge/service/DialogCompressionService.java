@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +24,7 @@ public class DialogCompressionService {
 
     private final OpenRouterToolClient openRouterClient;
     private final ConversationHistoryService conversationHistoryService;
+    private final MemoryService memoryService;  // ⭐ NEW: For saving summary to DB
 
     // Compression threshold - after how many messages to create summary
     private static final int COMPRESSION_THRESHOLD = 5;
@@ -94,6 +96,15 @@ public class DialogCompressionService {
         // Create summary
         String summary = createSummary(messagesToCompress);
 
+        // ⭐ SAVE SUMMARY TO POSTGRESQL
+        memoryService.saveSummary(
+                conversationId,
+                summary,
+                messagesToCompress.size(),
+                LocalDateTime.now()
+        );
+        log.info("✅ Summary saved to PostgreSQL for conversation: {}", conversationId);
+
         // Build compressed history: system + summary + last messages
         List<Message> compressedHistory = new ArrayList<>(systemMessages);
         compressedHistory.add(new Message("user",
@@ -142,7 +153,7 @@ public class DialogCompressionService {
                 %s
                 
                 РЕЗЮМЕ:
-                """, conversationText.toString());
+                """, conversationText);
 
         List<Message> summaryRequest = List.of(
                 new Message("user", summaryPrompt)

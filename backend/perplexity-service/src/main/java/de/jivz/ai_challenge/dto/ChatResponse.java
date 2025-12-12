@@ -2,7 +2,7 @@ package de.jivz.ai_challenge.dto;
 
 import lombok.*;
 
-import java.time.Instant;
+import java.util.Date;
 
 
 @Data
@@ -13,6 +13,6 @@ import java.time.Instant;
 public class ChatResponse {
     private String reply;
     private String toolName;
-    private Instant timestamp;
+    private Date timestamp;
     private ResponseMetrics metrics;
 }
