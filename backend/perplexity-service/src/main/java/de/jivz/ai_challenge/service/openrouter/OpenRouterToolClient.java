@@ -52,11 +52,19 @@ public class OpenRouterToolClient {
      */
     public OpenRouterResponseWithMetrics requestCompletionWithMetrics(
             List<Message> messages, Double temperature, String model) {
+        return requestCompletionWithMetrics(messages, temperature, model, null);
+    }
+
+    /**
+     * Requests a chat completion with full metrics and optional tools.
+     */
+    public OpenRouterResponseWithMetrics requestCompletionWithMetrics(
+            List<Message> messages, Double temperature, String model, List<OpenRouterRequest.Tool> tools) {
         validateMessages(messages);
 
-        OpenRouterRequest request = buildRequest(messages, temperature, model);
-        log.info("Calling OpenRouter API with metrics - model: {}, temperature: {}, messages: {}",
-                resolveModel(model), temperature, messages.size());
+        OpenRouterRequest request = buildRequest(messages, temperature, model, tools);
+        log.info("Calling OpenRouter API with metrics - model: {}, temperature: {}, messages: {}, tools: {}",
+                resolveModel(model), temperature, messages.size(), tools != null ? tools.size() : 0);
 
         return executeRequest(request);
     }
@@ -68,17 +76,29 @@ public class OpenRouterToolClient {
     }
 
     private OpenRouterRequest buildRequest(List<Message> messages, Double temperature, String model) {
+        return buildRequest(messages, temperature, model, null);
+    }
+
+    private OpenRouterRequest buildRequest(List<Message> messages, Double temperature, String model, List<OpenRouterRequest.Tool> tools) {
         List<OpenRouterRequest.ChatMessage> chatMessages = messages.stream()
-                .map(msg -> new OpenRouterRequest.ChatMessage(msg.getRole(), msg.getContent()))
+                .map(msg -> OpenRouterRequest.ChatMessage.builder()
+                        .role(msg.getRole())
+                        .content(msg.getContent())
+                        .build())
                 .collect(Collectors.toList());
 
-        return OpenRouterRequest.builder()
+        OpenRouterRequest.OpenRouterRequestBuilder builder = OpenRouterRequest.builder()
                 .model(resolveModel(model))
                 .messages(chatMessages)
                 .temperature(temperature != null ? temperature : DEFAULT_TEMPERATURE)
                 .maxTokens(DEFAULT_MAX_TOKENS)
-                .topP(DEFAULT_TOP_P)
-                .build();
+                .topP(DEFAULT_TOP_P);
+
+        if (tools != null && !tools.isEmpty()) {
+            builder.tools(tools);
+        }
+
+        return builder.build();
     }
 
     private String resolveModel(String model) {
@@ -159,11 +179,14 @@ public class OpenRouterToolClient {
         }
 
         OpenRouterResponse.Choice firstChoice = response.getChoices().getFirst();
-        if (firstChoice.getMessage() == null || firstChoice.getMessage().getContent() == null) {
-            throw new ExternalServiceException("Response missing message content");
+        OpenRouterResponse.Message message = firstChoice.getMessage();
+
+        if (message == null) {
+            throw new ExternalServiceException("Response missing message");
         }
 
-        String reply = firstChoice.getMessage().getContent();
+        // Content kann null sein wenn Tool-Calls vorhanden sind
+        String reply = message.getContent() != null ? message.getContent() : "";
         String finishReason = firstChoice.getFinishReason();
 
         // Check if response was truncated due to token limit
@@ -172,7 +195,14 @@ public class OpenRouterToolClient {
             log.warn("Finish reason: {}", finishReason);
         }
 
-        logReplyPreview(reply);
+        // Log tool calls if present
+        if (message.getToolCalls() != null && !message.getToolCalls().isEmpty()) {
+            log.info("🔧 Response contains {} tool calls", message.getToolCalls().size());
+        }
+
+        if (!reply.isEmpty()) {
+            logReplyPreview(reply);
+        }
 
         OpenRouterResponse.Usage usage = response.getUsage();
         Integer inputTokens = null;
@@ -197,6 +227,8 @@ public class OpenRouterToolClient {
 
         return OpenRouterResponseWithMetrics.builder()
                 .reply(reply)
+                .message(message)
+                .finishReason(finishReason)
                 .inputTokens(inputTokens)
                 .outputTokens(outputTokens)
                 .totalTokens(totalTokens)

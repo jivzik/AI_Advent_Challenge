@@ -15,4 +15,8 @@ public class ChatResponse {
     private String toolName;
     private Date timestamp;
     private ResponseMetrics metrics;
+
+    // ⭐ NEW: Vollständige Message für Tool-Call-Support
+    @ToString.Exclude
+    private de.jivz.ai_challenge.service.openrouter.model.OpenRouterResponse.Message rawMessage;
 }

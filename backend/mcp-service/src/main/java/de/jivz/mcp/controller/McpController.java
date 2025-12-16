@@ -1,5 +1,8 @@
 package de.jivz.mcp.controller;
 
+import de.jivz.mcp.client.PerplexityServiceClient;
+import de.jivz.mcp.client.PerplexityServiceDto.PerplexityRequest;
+import de.jivz.mcp.client.PerplexityServiceDto.PerplexityResponse;
 import de.jivz.mcp.model.McpTool;
 import de.jivz.mcp.model.ToolExecutionRequest;
 import de.jivz.mcp.model.ToolExecutionResponse;
@@ -23,10 +26,10 @@ import java.util.Map;
 public class McpController {
 
     private final McpServerService mcpServerService;
+    private final PerplexityServiceClient perplexityServiceClient;
 
     /**
      * Get list of available MCP tools
-     *
      * GET /mcp/tools
      */
     @GetMapping("/tools")
@@ -59,7 +62,6 @@ public class McpController {
 
     /**
      * Execute a tool with given arguments
-     *
      * POST /mcp/execute
      */
     @PostMapping("/execute")
@@ -109,20 +111,131 @@ public class McpController {
 
     /**
      * Check MCP server status
-     *
      * GET /mcp/status
      */
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
-        int toolCount = mcpServerService.listTools().size();
-
         Map<String, Object> status = new HashMap<>();
         status.put("status", "running");
-        status.put("type", "Java Native MCP Server");
-        status.put("toolCount", toolCount);
-        status.put("version", "1.0.0");
+        status.put("type", "Multi-Provider MCP Server");
+        status.put("version", "2.0.0");
+
+        // Add provider statistics
+        Map<String, Object> stats = mcpServerService.getStatistics();
+        status.putAll(stats);
 
         return ResponseEntity.ok(status);
     }
+
+    /**
+     * Get list of all registered providers
+     *
+     * GET /mcp/providers
+     */
+    @GetMapping("/providers")
+    public ResponseEntity<Map<String, Object>> getProviders() {
+        try {
+            log.info("Received request to list providers");
+            List<String> providers = mcpServerService.listProviders();
+            Map<String, Object> stats = mcpServerService.getStatistics();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("providers", providers);
+            response.put("statistics", stats);
+
+            log.info("Returning {} providers", providers.size());
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error listing providers", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Get tools from a specific provider
+     *
+     * GET /mcp/providers/{providerName}/tools
+     */
+    @GetMapping("/providers/{providerName}/tools")
+    public ResponseEntity<Map<String, Object>> getToolsByProvider(@PathVariable String providerName) {
+        try {
+            log.info("Received request to list tools for provider: {}", providerName);
+            List<McpTool> tools = mcpServerService.listToolsByProvider(providerName);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("provider", providerName);
+            response.put("tool_count", tools.size());
+            response.put("tools", tools);
+
+            log.info("Returning {} tools for provider: {}", tools.size(), providerName);
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid provider: {}", providerName, e);
+            return ResponseEntity.notFound().build();
+
+        } catch (Exception e) {
+            log.error("Error listing tools for provider: {}", providerName, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Ask Perplexity with MCP Tools
+     * Perplexity kann dabei google-service und andere MCP-Tools nutzen
+     *
+     * POST /mcp/perplexity/ask
+     */
+    @PostMapping("/perplexity/ask")
+    public ResponseEntity<PerplexityResponse> askPerplexity(@RequestBody PerplexityRequest request) {
+        try {
+            log.info("Received Perplexity request: {} (useTools: {})",
+                    request.getQuery(), request.isUseTools());
+
+            PerplexityResponse response = perplexityServiceClient.askWithTools(
+                    request.getQuery(),
+                    request.isUseTools()
+            );
+
+            log.info("Perplexity response received. Tools used: {}", response.getToolsUsed());
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error asking Perplexity", e);
+            return ResponseEntity.ok(PerplexityResponse.builder()
+                    .answer("Error: " + e.getMessage())
+                    .success(false)
+                    .error(e.getMessage())
+                    .build());
+        }
+    }
+
+    /**
+     * Search with Perplexity
+     *
+     * POST /mcp/perplexity/search
+     */
+    @PostMapping("/perplexity/search")
+    public ResponseEntity<PerplexityResponse> searchPerplexity(@RequestBody Map<String, String> request) {
+        try {
+            String query = request.get("query");
+            log.info("Received Perplexity search request: {}", query);
+
+            PerplexityResponse response = perplexityServiceClient.search(query);
+
+            log.info("Perplexity search response received");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error searching with Perplexity", e);
+            return ResponseEntity.ok(PerplexityResponse.builder()
+                    .answer("Error: " + e.getMessage())
+                    .success(false)
+                    .error(e.getMessage())
+                    .build());
+        }
+    }
 }
+
 

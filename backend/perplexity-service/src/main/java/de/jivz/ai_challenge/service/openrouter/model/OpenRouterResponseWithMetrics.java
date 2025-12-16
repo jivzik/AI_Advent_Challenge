@@ -21,6 +21,10 @@ public class OpenRouterResponseWithMetrics {
     private Long responseTimeMs;
     private String model;
 
+    // ⭐ NEW: Vollständige Response für Tool-Call-Support
+    private OpenRouterResponse.Message message;
+    private String finishReason;
+
     /**
      * Returns a formatted summary of the metrics.
      */

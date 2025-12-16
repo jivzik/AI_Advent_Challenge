@@ -27,7 +27,8 @@ public class ChatController {
 
 
     public ChatController(AgentService agentService,
-                          ConversationHistoryService historyService, DialogCompressionService compressionService) {
+                          ConversationHistoryService historyService,
+                          DialogCompressionService compressionService) {
         this.agentService = agentService;
         this.historyService = historyService;
         this.compressionService = compressionService;
@@ -41,7 +42,8 @@ public class ChatController {
     @PostMapping
     public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
         log.info("Received chat request from user: {}", request.getUserId());
-        ChatResponse response = agentService.handle(request);
+        //ChatResponse response = agentService.handle(request);
+        ChatResponse response = agentService.handleWithMcpTools(request);
 
         return ResponseEntity.ok(response);
     }
@@ -105,6 +107,83 @@ public class ChatController {
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of(
                 "status", "UP",
+                "timestamp", new Date().toString()
+        ));
+    }
+
+    /**
+     * ⭐ Chat with MCP Tool support.
+     * AgentService nutzt MCP intern für Tool-Erkennung und Ausführung.
+     *
+     * Beispiele:
+     * - "Zeige meine Google Tasks" → ruft google_tasks_get via MCP
+     * - "Erstelle eine Task 'XYZ'" → ruft google_tasks_create via MCP
+     * - "Rechne 5 + 3" → ruft add_numbers via MCP
+     * - Normale Fragen → LLM-Verarbeitung
+     *
+     * POST /api/chat/with-tools
+     */
+    @PostMapping("/with-tools")
+    public ResponseEntity<ChatResponse> chatWithMcpTools(@Valid @RequestBody ChatRequest request) {
+        log.info("Received chat request with LLM-based MCP tool support from user: {}", request.getUserId());
+        ChatResponse response = agentService.handleWithMcpTools(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * ⭐ GET verfügbare MCP Tools.
+     * Zeigt alle Tools die dem LLM zur Verfügung stehen.
+     *
+     * GET /api/chat/available-tools
+     */
+    @GetMapping("/available-tools")
+    public ResponseEntity<Map<String, Object>> getAvailableTools() {
+        log.info("Getting available MCP tools");
+        var tools = agentService.getAvailableMcpTools();
+        return ResponseEntity.ok(Map.of(
+                "count", tools.size(),
+                "tools", tools,
+                "timestamp", new Date().toString()
+        ));
+    }
+
+    /**
+     * ⭐ NEW: Simple chat endpoint for tool-based workflow.
+     *
+     * Accepts just a prompt string and returns the final answer.
+     * Uses the Sonar + MCP loop internally:
+     * 1. Sonar decides if MCP tool is needed
+     * 2. If yes, calls MCP, adds result, asks Sonar again
+     * 3. Repeats until final answer
+     *
+     * POST /api/chat/simple
+     * Body: { "prompt": "покажи мои задачи" }
+     * Response: { "answer": "...", "timestamp": "..." }
+     */
+    @PostMapping("/simple")
+    public ResponseEntity<Map<String, Object>> simpleChat(@RequestBody Map<String, String> body) {
+        String prompt = body.get("prompt");
+        if (prompt == null || prompt.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "prompt is required",
+                    "timestamp", new Date().toString()
+            ));
+        }
+
+        log.info("Received simple chat request with prompt: {}",
+                prompt.substring(0, Math.min(50, prompt.length())));
+
+        // Create a ChatRequest from the simple prompt
+        ChatRequest request = new ChatRequest();
+        request.setMessage(prompt);
+        request.setUserId("simple-user");
+        request.setConversationId("simple-" + System.currentTimeMillis());
+        request.setTemperature(0.7);
+
+        ChatResponse response = agentService.handleWithMcpTools(request);
+
+        return ResponseEntity.ok(Map.of(
+                "answer", response.getReply(),
                 "timestamp", new Date().toString()
         ));
     }

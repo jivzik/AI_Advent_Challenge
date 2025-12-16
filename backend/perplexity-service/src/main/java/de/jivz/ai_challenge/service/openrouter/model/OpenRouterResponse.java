@@ -56,6 +56,31 @@ public class OpenRouterResponse {
         private String content;
         private String refusal;
         private Object reasoning;
+
+        @JsonProperty("tool_calls")
+        private List<ToolCall> toolCalls;
+    }
+
+    /**
+     * Tool call in the message.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ToolCall {
+        private String id;
+        private String type;
+        private Function function;
+
+        @Data
+        @NoArgsConstructor
+        @AllArgsConstructor
+        @Builder
+        public static class Function {
+            private String name;
+            private String arguments;
+        }
     }
 
     /**

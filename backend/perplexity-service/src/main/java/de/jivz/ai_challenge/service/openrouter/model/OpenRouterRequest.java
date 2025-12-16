@@ -34,6 +34,12 @@ public class OpenRouterRequest {
     public static class ChatMessage {
         private String role;
         private String content;
+
+        @com.fasterxml.jackson.annotation.JsonProperty("tool_calls")
+        private List<ToolCall> toolCalls;
+
+        @com.fasterxml.jackson.annotation.JsonProperty("tool_call_id")
+        private String toolCallId;
     }
 
     /**
@@ -48,5 +54,28 @@ public class OpenRouterRequest {
         private String name;
         private String description;
         private Object parameters;
+    }
+
+    /**
+     * Tool call from LLM response.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ToolCall {
+        private String id;
+        private String type;
+
+        @Data
+        @NoArgsConstructor
+        @AllArgsConstructor
+        @Builder
+        public static class Function {
+            private String name;
+            private String arguments;
+        }
+
+        private Function function;
     }
 }
