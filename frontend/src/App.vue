@@ -14,11 +14,18 @@
       >
         🎯 Meta-Prompt (Universal AI)
       </button>
+      <button
+        @click="currentMode = 'reminder'"
+        :class="{ active: currentMode === 'reminder' }"
+      >
+        📋 Reminder Dashboard
+      </button>
     </div>
 
     <!-- Component Display -->
     <ChatInterface v-if="currentMode === 'normal'" />
     <MetaPromptChat v-else-if="currentMode === 'meta'" />
+    <ReminderDashboard v-else-if="currentMode === 'reminder'" />
   </div>
 </template>
 
@@ -26,8 +33,9 @@
 import { ref } from 'vue';
 import ChatInterface from './components/ChatInterface.vue';
 import MetaPromptChat from './components/MetaPromptChat.vue';
+import ReminderDashboard from './components/ReminderDashboard.vue';
 
-const currentMode = ref<'normal' | 'meta'>('normal'); // Default to meta-prompt
+const currentMode = ref<'normal' | 'meta' | 'reminder'>('normal'); // Default to meta-prompt
 </script>
 
 

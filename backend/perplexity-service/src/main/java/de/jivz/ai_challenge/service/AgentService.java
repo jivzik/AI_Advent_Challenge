@@ -4,6 +4,7 @@ import de.jivz.ai_challenge.dto.ChatRequest;
 import de.jivz.ai_challenge.dto.ChatResponse;
 import de.jivz.ai_challenge.dto.Message;
 import de.jivz.ai_challenge.dto.ResponseMetrics;
+import de.jivz.ai_challenge.service.mcp.McpDto.McpTool;
 import de.jivz.ai_challenge.service.perplexity.PerplexityToolClient;
 import de.jivz.ai_challenge.service.openrouter.OpenRouterToolClient;
 import de.jivz.ai_challenge.service.openrouter.model.OpenRouterResponseWithMetrics;
@@ -35,6 +36,7 @@ public class AgentService {
     private final JsonResponseParser jsonResponseParser;
     private final DialogCompressionService compressionService;
     private final MemoryService memoryService;  // ⭐ NEW: PostgreSQL persistence
+    private final ChatWithToolsService chatWithToolsService; // ⭐ NEW: MCP Tools integration
 
     /**
      * Handles a chat request and returns the response.
@@ -271,6 +273,39 @@ public class AgentService {
      */
     private ChatResponse buildResponse(String reply, String provider, ResponseMetrics metrics) {
         String toolName = "openrouter".equalsIgnoreCase(provider) ? "OpenRouterToolClient" : "PerplexityToolClient";
-        return new ChatResponse(reply, toolName, new java.util.Date(), metrics);
+        return ChatResponse.builder()
+                .reply(reply)
+                .toolName(toolName)
+                .timestamp(new java.util.Date())
+                .metrics(metrics)
+                .build();
+    }
+
+    /**
+     * ⭐ NEW: Handles chat with MCP Tool support.
+     *
+     * Delegates to ChatWithToolsService for the Sonar + MCP loop:
+     * 1. Sonar decides if MCP tool is needed
+     * 2. If yes, calls MCP, adds result to history, asks Sonar again
+     * 3. Repeats until Sonar gives final answer
+     *
+     * @param request the chat request
+     * @return the chat response with MCP tool integration
+     */
+    public ChatResponse handleWithMcpTools(ChatRequest request) {
+        validateRequest(request);
+        log.info("🔧 Handling request with MCP tools for user: {}", request.getUserId());
+
+        return chatWithToolsService.chatWithTools(request);
+    }
+
+    /**
+     * ⭐ NEW: Returns list of available MCP Tools.
+     *
+     * @return List of MCP tools from the MCP server
+     */
+    public List<McpTool> getAvailableMcpTools() {
+        log.info("📋 Getting available MCP tools");
+        return chatWithToolsService.getAvailableTools();
     }
 }

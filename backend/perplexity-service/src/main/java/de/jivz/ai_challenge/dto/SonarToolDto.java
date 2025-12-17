@@ -45,6 +45,67 @@ public class SonarToolDto {
          * Bei step == "tool" kann dies leer oder null sein
          */
         private String answer;
+
+        /**
+         * Strukturierte Zusammenfassung (nur wenn step == "final")
+         * Enthält Metadaten wie Titel, Anzahl Items, Priorität, etc.
+         */
+        private SummaryInfo summary;
+    }
+
+    /**
+     * Strukturierte Zusammenfassungs-Info vom LLM.
+     * Wird bei Reminder-Zusammenfassungen verwendet.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SummaryInfo {
+
+        /**
+         * Titel der Zusammenfassung
+         */
+        private String title;
+
+        /**
+         * Anzahl der Items/Aufgaben
+         */
+        @JsonProperty("total_items")
+        private Integer totalItems;
+
+        /**
+         * Priorität: HIGH, MEDIUM, LOW
+         */
+        private String priority;
+
+        /**
+         * Wichtige Punkte/Highlights
+         */
+        private List<String> highlights;
+
+        /**
+         * Bald fällige Aufgaben
+         */
+        @JsonProperty("due_soon")
+        private List<DueTask> dueSoon;
+
+        /**
+         * Überfällige Aufgaben
+         */
+        private List<DueTask> overdue;
+    }
+
+    /**
+     * Eine Aufgabe mit Fälligkeitsdatum.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DueTask {
+        private String task;
+        private String due;
     }
 
     /**

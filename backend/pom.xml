@@ -15,6 +15,7 @@
     <modules>
         <module>perplexity-service</module>
         <module>mcp-service</module>
+        <module>google-service</module>
     </modules>
 
 

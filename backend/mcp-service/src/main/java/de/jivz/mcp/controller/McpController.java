@@ -84,12 +84,34 @@ public class McpController {
                     request.getArguments() != null ? request.getArguments() : new HashMap<>()
             );
 
-            log.info("Tool executed successfully: {}", request.getToolName());
-            return ResponseEntity.ok(ToolExecutionResponse.builder()
-                    .success(true)
-                    .result(result)
-                    .toolName(request.getToolName())
-                    .build());
+            // Check if the result indicates an error (provider returned success: false)
+            boolean isSuccess = true;
+            String errorMessage = null;
+            if (result instanceof Map<?, ?> resultMap) {
+                Object successValue = resultMap.get("success");
+                if (Boolean.FALSE.equals(successValue)) {
+                    isSuccess = false;
+                    Object errorValue = resultMap.get("error");
+                    errorMessage = errorValue != null ? errorValue.toString() : "Tool execution failed";
+                }
+            }
+
+            if (isSuccess) {
+                log.info("Tool executed successfully: {}", request.getToolName());
+                return ResponseEntity.ok(ToolExecutionResponse.builder()
+                        .success(true)
+                        .result(result)
+                        .toolName(request.getToolName())
+                        .build());
+            } else {
+                log.warn("Tool execution returned error: {} - {}", request.getToolName(), errorMessage);
+                return ResponseEntity.ok(ToolExecutionResponse.builder()
+                        .success(false)
+                        .error(errorMessage)
+                        .result(result)
+                        .toolName(request.getToolName())
+                        .build());
+            }
 
         } catch (IllegalArgumentException e) {
             log.error("Invalid arguments for tool: {}", request.getToolName(), e);

@@ -2,14 +2,9 @@ package de.jivz.mcp.service;
 
 import de.jivz.mcp.model.McpTool;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.*;
 
@@ -25,16 +20,13 @@ import java.util.*;
 public class GoogleServiceToolProvider implements ToolProvider {
 
     private final List<McpTool> availableTools;
-    private final RestTemplate restTemplate;
-    private final String googleServiceUrl;
+    private final WebClient gsWebClient;
+    private final ThreadLocal<String> currentTaskListId = new ThreadLocal<>();
 
-    public GoogleServiceToolProvider(
-            @Value("${google.service.url:http://localhost:8082}") String googleServiceUrl) {
-        this.googleServiceUrl = googleServiceUrl;
-        this.restTemplate = new RestTemplate();
+    public GoogleServiceToolProvider(WebClient gsWebClient) {
+        this.gsWebClient = gsWebClient;
         this.availableTools = initializeTools();
-        log.info("Google Service Tool Provider initialized with {} tools (Google Service URL: {})",
-                availableTools.size(), googleServiceUrl);
+        log.info("Google Service Tool Provider initialized with {} tools", availableTools.size());
     }
 
     @Override
@@ -56,6 +48,7 @@ public class GoogleServiceToolProvider implements ToolProvider {
             case "google_tasks_get" -> getTasks(arguments);
             case "google_tasks_create" -> createTask(arguments);
             case "google_tasks_update" -> updateTask(arguments);
+            case "google_tasks_complete" -> completeTask(arguments);
             case "google_tasks_delete" -> deleteTask(arguments);
             default -> throw new IllegalArgumentException("Unknown Google Service tool: " + toolName);
         };
@@ -161,6 +154,26 @@ public class GoogleServiceToolProvider implements ToolProvider {
                 ))
                 .build());
 
+        // Tool 4b: Complete Task (convenience method)
+        tools.add(McpTool.builder()
+                .name("google_tasks_complete")
+                .description("Mark a task as completed in Google Tasks")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(
+                                "taskListId", Map.of(
+                                        "type", "string",
+                                        "description", "The ID of the task list"
+                                ),
+                                "taskId", Map.of(
+                                        "type", "string",
+                                        "description", "The ID of the task to mark as completed"
+                                )
+                        ),
+                        "required", List.of("taskId")
+                ))
+                .build());
+
         // Tool 5: Delete Task
         tools.add(McpTool.builder()
                 .name("google_tasks_delete")
@@ -189,14 +202,18 @@ public class GoogleServiceToolProvider implements ToolProvider {
      */
     private Object getTaskLists() {
         try {
-            String url = googleServiceUrl + "/api/tasks/lists";
+            String url = "/api/tasks/lists";
             log.debug("Calling Google Service: GET {}", url);
 
-            ResponseEntity<Object> response = restTemplate.getForEntity(url, Object.class);
+            Object response = gsWebClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .bodyToMono(Object.class)
+                    .block();
 
             return Map.of(
                     "success", true,
-                    "data", response.getBody()
+                    "data", response
             );
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
@@ -215,17 +232,30 @@ public class GoogleServiceToolProvider implements ToolProvider {
             String taskListId = (String) arguments.get("taskListId");
             // Handle null or empty taskListId
             String url = (taskListId != null && !taskListId.isBlank())
-                    ? googleServiceUrl + "/api/tasks/lists/" + taskListId
-                    : googleServiceUrl + "/api/tasks";
+                    ? "/api/tasks/lists/" + taskListId
+                    : "/api/tasks";
+
+            // Store taskListId in context for later use
+            if (taskListId != null && !taskListId.isBlank()) {
+                currentTaskListId.set(taskListId);
+                log.debug("Stored taskListId in context: {}", taskListId);
+            }
 
             log.debug("Calling Google Service: GET {}", url);
 
-            ResponseEntity<Object> response = restTemplate.getForEntity(url, Object.class);
+            Object response = gsWebClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .bodyToMono(Object.class)
+                    .block();
 
-            return Map.of(
-                    "success", true,
-                    "data", response.getBody()
-            );
+            // Include taskListId in response so LLM can reference it
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("taskListId", taskListId != null ? taskListId : "default");
+            result.put("data", response);
+
+            return result;
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(
@@ -243,11 +273,14 @@ public class GoogleServiceToolProvider implements ToolProvider {
             String taskListId = (String) arguments.get("taskListId");
             // Handle null or empty taskListId
             String url = (taskListId != null && !taskListId.isBlank())
-                    ? googleServiceUrl + "/api/tasks/lists/" + taskListId
-                    : googleServiceUrl + "/api/tasks";
+                    ? "/api/tasks/lists/" + taskListId
+                    : "/api/tasks";
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+            // Store taskListId in context for later use
+            if (taskListId != null && !taskListId.isBlank()) {
+                currentTaskListId.set(taskListId);
+                log.debug("Stored taskListId in context: {}", taskListId);
+            }
 
             Map<String, Object> taskRequest = new HashMap<>();
             taskRequest.put("title", arguments.get("title"));
@@ -258,16 +291,22 @@ public class GoogleServiceToolProvider implements ToolProvider {
                 taskRequest.put("due", arguments.get("due"));
             }
 
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(taskRequest, headers);
-
             log.debug("Calling Google Service: POST {} with body: {}", url, taskRequest);
 
-            ResponseEntity<Object> response = restTemplate.postForEntity(url, request, Object.class);
+            Object response = gsWebClient.post()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(taskRequest)
+                    .retrieve()
+                    .bodyToMono(Object.class)
+                    .block();
 
-            return Map.of(
-                    "success", true,
-                    "data", response.getBody()
-            );
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("taskListId", taskListId != null ? taskListId : "default");
+            result.put("data", response);
+
+            return result;
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(
@@ -289,14 +328,16 @@ public class GoogleServiceToolProvider implements ToolProvider {
                 throw new IllegalArgumentException("taskId is required");
             }
 
-            // Handle null or empty taskListId
-            // Correct path: /api/tasks/lists/{taskListId}/tasks/{taskId}
-            String url = (taskListId != null && !taskListId.isBlank())
-                    ? String.format("%s/api/tasks/lists/%s/tasks/%s", googleServiceUrl, taskListId, taskId)
-                    : String.format("%s/api/tasks/%s", googleServiceUrl, taskId);
+            // Use stored taskListId from context if current one is empty
+            if ((taskListId == null || taskListId.isBlank()) && currentTaskListId.get() != null) {
+                taskListId = currentTaskListId.get();
+                log.debug("Using taskListId from context: {}", taskListId);
+            }
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+            // Handle null or empty taskListId
+            String url = (taskListId != null && !taskListId.isBlank())
+                    ? String.format("/api/tasks/lists/%s/tasks/%s", taskListId, taskId)
+                    : String.format("/api/tasks/%s", taskId);
 
             Map<String, Object> updateRequest = new HashMap<>();
             if (arguments.containsKey("title")) {
@@ -309,17 +350,69 @@ public class GoogleServiceToolProvider implements ToolProvider {
                 updateRequest.put("status", arguments.get("status"));
             }
 
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(updateRequest, headers);
-
             log.debug("Calling Google Service: PUT {} with body: {}", url, updateRequest);
 
-            ResponseEntity<Object> response = restTemplate.exchange(
-                    url, HttpMethod.PUT, request, Object.class);
+            Object response = gsWebClient.put()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(updateRequest)
+                    .retrieve()
+                    .bodyToMono(Object.class)
+                    .block();
 
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("taskListId", taskListId != null ? taskListId : "default");
+            result.put("data", response);
+
+            return result;
+        } catch (Exception e) {
+            log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(
-                    "success", true,
-                    "data", response.getBody()
+                    "success", false,
+                    "error", e.getMessage()
             );
+        }
+    }
+
+    /**
+     * Complete a task (mark as completed)
+     */
+    private Object completeTask(Map<String, Object> arguments) {
+        try {
+            String taskListId = (String) arguments.get("taskListId");
+            String taskId = (String) arguments.get("taskId");
+
+            if (taskId == null || taskId.isBlank()) {
+                throw new IllegalArgumentException("taskId is required");
+            }
+
+            // Use stored taskListId from context if current one is empty
+            if ((taskListId == null || taskListId.isBlank()) && currentTaskListId.get() != null) {
+                taskListId = currentTaskListId.get();
+                log.debug("Using taskListId from context: {}", taskListId);
+            }
+
+            // Handle null or empty taskListId
+            String url = (taskListId != null && !taskListId.isBlank())
+                    ? String.format("/api/tasks/lists/%s/tasks/%s/complete", taskListId, taskId)
+                    : String.format("/api/tasks/%s/complete", taskId);
+
+            log.debug("Calling Google Service: PATCH {}", url);
+
+            Object response = gsWebClient.patch()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .bodyToMono(Object.class)
+                    .block();
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("taskListId", taskListId != null ? taskListId : "default");
+            result.put("data", response);
+
+            return result;
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(
@@ -341,20 +434,31 @@ public class GoogleServiceToolProvider implements ToolProvider {
                 throw new IllegalArgumentException("taskId is required");
             }
 
+            // Use stored taskListId from context if current one is empty
+            if ((taskListId == null || taskListId.isBlank()) && currentTaskListId.get() != null) {
+                taskListId = currentTaskListId.get();
+                log.debug("Using taskListId from context: {}", taskListId);
+            }
+
             // Handle null or empty taskListId
-            // Correct path: /api/tasks/lists/{taskListId}/tasks/{taskId}
             String url = (taskListId != null && !taskListId.isBlank())
-                    ? String.format("%s/api/tasks/lists/%s/tasks/%s", googleServiceUrl, taskListId, taskId)
-                    : String.format("%s/api/tasks/%s", googleServiceUrl, taskId);
+                    ? String.format("/api/tasks/lists/%s/tasks/%s", taskListId, taskId)
+                    : String.format("/api/tasks/%s", taskId);
 
             log.debug("Calling Google Service: DELETE {}", url);
 
-            restTemplate.delete(url);
+            gsWebClient.delete()
+                    .uri(url)
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block();
 
-            return Map.of(
-                    "success", true,
-                    "message", "Task deleted successfully"
-            );
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("taskListId", taskListId != null ? taskListId : "default");
+            result.put("message", "Task deleted successfully");
+
+            return result;
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(

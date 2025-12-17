@@ -44,16 +44,26 @@ public class OpenRouterRequest {
 
     /**
      * Tool definition (optional).
+     * OpenAI/OpenRouter format: { "type": "function", "function": { "name": ..., "description": ..., "parameters": ... } }
      */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
     public static class Tool {
-        private String type;
-        private String name;
-        private String description;
-        private Object parameters;
+        @Builder.Default
+        private String type = "function";
+        private FunctionDefinition function;
+
+        @Data
+        @NoArgsConstructor
+        @AllArgsConstructor
+        @Builder
+        public static class FunctionDefinition {
+            private String name;
+            private String description;
+            private Object parameters;
+        }
     }
 
     /**
