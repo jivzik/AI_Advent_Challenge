@@ -51,6 +51,41 @@
           <span>{{ getSummaryTypeIcon(latestSummary.summaryType) }} {{ latestSummary.summaryType }}</span>
         </div>
         <div class="summary-content markdown-content" v-html="renderMarkdown(latestSummary.content)"></div>
+
+        <!-- Extracted Structured Data Sections -->
+        <div class="structured-sections">
+          <!-- Highlights Section -->
+          <div class="structured-section highlights-section" v-if="extractHighlights(latestSummary.content).length > 0">
+            <h3 class="section-header">🌟 Highlights</h3>
+            <ul class="highlights-list">
+              <li v-for="(highlight, idx) in extractHighlights(latestSummary.content)" :key="`h-${idx}`">
+                {{ highlight }}
+              </li>
+            </ul>
+          </div>
+
+          <!-- Due Soon Section -->
+          <div class="structured-section due-soon-section" v-if="extractDueSoon(latestSummary.content).length > 0">
+            <h3 class="section-header">⏱️ Bald fällig</h3>
+            <div class="task-list">
+              <div v-for="(task, idx) in extractDueSoon(latestSummary.content)" :key="`ds-${idx}`" class="task-item">
+                <span class="task-name">{{ task.name }}</span>
+                <span class="task-due">{{ task.due }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Overdue Section -->
+          <div class="structured-section overdue-section" v-if="extractOverdue(latestSummary.content).length > 0">
+            <h3 class="section-header">⚠️ Überfällig</h3>
+            <div class="task-list overdue-tasks">
+              <div v-for="(task, idx) in extractOverdue(latestSummary.content)" :key="`o-${idx}`" class="task-item overdue-item">
+                <span class="task-name">{{ task.name }}</span>
+                <span class="task-due">{{ task.due }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -257,27 +292,140 @@ function getSummaryTypeIcon(type: string): string {
   };
   return icons[type] || '📋';
 }
+
+/**
+ * Extrahiere Highlights aus dem Markdown-Content
+ */
+function extractHighlights(content: string): string[] {
+  const highlights: string[] = [];
+  if (!content) return highlights;
+
+  const regex = /^## 🌟 Highlights\s*$([\s\S]*?)(?=^##|$)/m;
+  const match = content.match(regex);
+
+  if (match && match[1]) {
+    const lines = match[1].split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('- ')) {
+        highlights.push(trimmed.substring(2));
+      }
+    }
+  }
+
+  return highlights;
+}
+
+/**
+ * Extrahiere "Due Soon" Aufgaben aus dem Markdown-Content
+ */
+function extractDueSoon(content: string): Array<{ name: string; due: string }> {
+  const tasks: Array<{ name: string; due: string }> = [];
+  if (!content) return tasks;
+
+  const regex = /^## ⏱️ Bald fällig\s*$([\s\S]*?)(?=^##|$)/m;
+  const match = content.match(regex);
+
+  if (match && match[1]) {
+    const lines = match[1].split('\n');
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i]?.trim() || '';
+      if (line.startsWith('- **')) {
+        // Extrahiere Task-Name
+        const nameMatch = line.match(/- \*\*(.*?)\*\*/);
+        if (nameMatch && nameMatch[1]) {
+          const name = nameMatch[1];
+          // Prüfe nächste Zeile für Due-Info
+          let due = '';
+          if (i + 1 < lines.length) {
+            const dueLine = lines[i + 1]?.trim() || '';
+            if (dueLine.startsWith('- Fällig:')) {
+              due = dueLine.substring(9).trim();
+              i++; // Überspringe die Due-Zeile
+            }
+          }
+          tasks.push({ name, due: due || 'Keine Info' });
+        }
+      }
+      i++;
+    }
+  }
+
+  return tasks;
+}
+
+/**
+ * Extrahiere "Overdue" Aufgaben aus dem Markdown-Content
+ */
+function extractOverdue(content: string): Array<{ name: string; due: string }> {
+  const tasks: Array<{ name: string; due: string }> = [];
+  if (!content) return tasks;
+
+  const regex = /^## ⚠️ Überfällig\s*$([\s\S]*?)(?=^##|$)/m;
+  const match = content.match(regex);
+
+  if (match && match[1]) {
+    const lines = match[1].split('\n');
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i]?.trim() || '';
+      if (line.startsWith('- **')) {
+        // Extrahiere Task-Name
+        const nameMatch = line.match(/- \*\*(.*?)\*\*/);
+        if (nameMatch && nameMatch[1]) {
+          const name = nameMatch[1];
+          // Prüfe nächste Zeile für Zeitangabe
+          let due = '';
+          if (i + 1 < lines.length) {
+            const dueLine = lines[i + 1]?.trim() || '';
+            if (dueLine.startsWith('- ')) {
+              due = dueLine.substring(2).trim();
+              i++; // Überspringe die Zeitzeile
+            }
+          }
+          tasks.push({ name, due: due || 'Keine Info' });
+        }
+      }
+      i++;
+    }
+  }
+
+  return tasks;
+}
 </script>
 
 <style scoped>
 .reminder-dashboard {
   max-width: 100%;
   margin: 0;
-  padding: 12px;
+  padding: 80px 12px 12px 12px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 30, 60, 0.98) 100%);
   color: #333;
-  height: 100vh;
+  min-height: 100vh;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   justify-content: center;
   align-items: center;
+  box-sizing: border-box;
+  z-index: 1;
 }
 
 .reminder-dashboard > * {
-  width: 90%;
-  max-width: 1200px;
+  width: 95%;
+  max-width: 1400px;
+  height: auto;
+  margin: 6px auto;
 }
 
 /* Header */
@@ -292,7 +440,7 @@ function getSummaryTypeIcon(type: string): string {
 }
 
 .header-left h1 {
-  font-size: 16px;
+  font-size: 32px;
   margin: 0;
   background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
@@ -301,21 +449,21 @@ function getSummaryTypeIcon(type: string): string {
 }
 
 .subtitle {
-  color: #666;
-  margin: 1px 0 0 0;
-  font-size: 10px;
+  color: #999;
+  margin: 4px 0 0 0;
+  font-size: 16px;
 }
 
 .trigger-button {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 12px;
+  padding: 8px 16px;
   background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -349,19 +497,19 @@ function getSummaryTypeIcon(type: string): string {
 .status-bar {
   display: flex;
   gap: 12px;
-  padding: 6px 8px;
+  padding: 8px 12px;
   background: rgba(0, 0, 0, 0.05);
   border-radius: 6px;
   margin-bottom: 8px;
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .status-item {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 14px;
   color: #666;
 }
 
@@ -386,8 +534,8 @@ function getSummaryTypeIcon(type: string): string {
   margin-bottom: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
-  flex: 0 0 66%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  flex: 0 0 55%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 /* Latest Summary Scrollbar */
@@ -415,21 +563,21 @@ function getSummaryTypeIcon(type: string): string {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 10px;
+  padding: 12px 16px;
   background: rgba(102, 126, 234, 0.2);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .card-title {
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 600;
   color: #667eea;
 }
 
 .priority-badge {
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: 20px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -450,27 +598,27 @@ function getSummaryTypeIcon(type: string): string {
 }
 
 .card-content {
-  padding: 8px 10px;
+  padding: 12px 16px;
 }
 
 .card-content h2 {
-  margin: 0 0 6px 0;
-  font-size: 14px;
+  margin: 0 0 8px 0;
+  font-size: 18px;
   color: #fff;
 }
 
 .summary-meta {
   display: flex;
   gap: 10px;
-  margin-bottom: 6px;
-  font-size: 9px;
+  margin-bottom: 8px;
+  font-size: 13px;
   color: #888;
 }
 
 .summary-content {
-  line-height: 1.3;
+  line-height: 1.5;
   color: #ccc;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 /* Empty State */
@@ -513,8 +661,8 @@ function getSummaryTypeIcon(type: string): string {
 }
 
 .section-title {
-  font-size: 11px;
-  margin: 0 0 6px 0;
+  font-size: 14px;
+  margin: 0 0 8px 0;
   color: #fff;
   flex-shrink: 0;
   padding: 0 3px;
@@ -590,7 +738,7 @@ function getSummaryTypeIcon(type: string): string {
 .priority-dot.low { background: #4ade80; }
 
 .card-title-small {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
   white-space: nowrap;
@@ -601,7 +749,7 @@ function getSummaryTypeIcon(type: string): string {
 .card-meta-small {
   display: flex;
   gap: 8px;
-  font-size: 10px;
+  font-size: 12px;
   color: #888;
 }
 
@@ -759,9 +907,21 @@ function getSummaryTypeIcon(type: string): string {
   margin-bottom: 8px;
 }
 
-.markdown-content :deep(h1) { font-size: 1.5em; }
-.markdown-content :deep(h2) { font-size: 1.3em; }
-.markdown-content :deep(h3) { font-size: 1.1em; }
+.markdown-content :deep(h1) { font-size: 1.8em; }
+.markdown-content :deep(h2) { font-size: 1.4em; }
+.markdown-content :deep(h3) { font-size: 1.2em; }
+
+/* Скрыть первый h2 заголовок в markdown (дублирование названия) */
+.markdown-content :deep(h2:first-child),
+.summary-content :deep(h2:first-child) {
+  display: none;
+}
+
+/* Скрыть первый пустой абзац, который идет после скрытого заголовка */
+.markdown-content :deep(p:first-child),
+.summary-content :deep(p:first-child) {
+  display: none;
+}
 
 .markdown-content :deep(ul),
 .markdown-content :deep(ol) {
@@ -792,6 +952,82 @@ function getSummaryTypeIcon(type: string): string {
   border-radius: 8px;
   overflow-x: auto;
   color: #ccc;
+}
+
+/* Structured Sections */
+.structured-sections {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.structured-section {
+  margin-bottom: 16px;
+}
+
+.section-header {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0 8px 0;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.highlights-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.highlights-list li {
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: rgba(102, 126, 234, 0.1);
+  border-left: 3px solid #667eea;
+  border-radius: 4px;
+  color: #ddd;
+  font-size: 13px;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  font-size: 13px;
+  border-left: 3px solid #ffa500;
+}
+
+.task-item.overdue-item {
+  border-left-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.task-name {
+  font-weight: 500;
+  color: #fff;
+  flex: 1;
+}
+
+.task-due {
+  color: #999;
+  font-size: 12px;
+  margin-left: 12px;
+  white-space: nowrap;
+}
+
+.overdue-item .task-due {
+  color: #ff6b6b;
+  font-weight: 500;
 }
 </style>
 

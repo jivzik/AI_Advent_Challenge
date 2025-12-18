@@ -1,4 +1,4 @@
-package de.jivz.ai_challenge.config;
+package de.jivz.ai_challenge.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;

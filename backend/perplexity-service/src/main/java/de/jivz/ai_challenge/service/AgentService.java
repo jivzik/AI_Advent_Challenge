@@ -4,7 +4,6 @@ import de.jivz.ai_challenge.dto.ChatRequest;
 import de.jivz.ai_challenge.dto.ChatResponse;
 import de.jivz.ai_challenge.dto.Message;
 import de.jivz.ai_challenge.dto.ResponseMetrics;
-import de.jivz.ai_challenge.service.mcp.McpDto.McpTool;
 import de.jivz.ai_challenge.service.perplexity.PerplexityToolClient;
 import de.jivz.ai_challenge.service.openrouter.OpenRouterToolClient;
 import de.jivz.ai_challenge.service.openrouter.model.OpenRouterResponseWithMetrics;
@@ -297,15 +296,5 @@ public class AgentService {
         log.info("🔧 Handling request with MCP tools for user: {}", request.getUserId());
 
         return chatWithToolsService.chatWithTools(request);
-    }
-
-    /**
-     * ⭐ NEW: Returns list of available MCP Tools.
-     *
-     * @return List of MCP tools from the MCP server
-     */
-    public List<McpTool> getAvailableMcpTools() {
-        log.info("📋 Getting available MCP tools");
-        return chatWithToolsService.getAvailableTools();
     }
 }

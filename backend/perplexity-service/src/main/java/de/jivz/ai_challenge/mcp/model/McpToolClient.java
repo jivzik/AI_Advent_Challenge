@@ -1,13 +1,11 @@
-package de.jivz.ai_challenge.service.mcp;
+package de.jivz.ai_challenge.mcp.model;
 
-import de.jivz.ai_challenge.service.mcp.McpDto.*;
+import de.jivz.ai_challenge.mcp.model.McpDto.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -29,9 +27,14 @@ import java.util.Map;
 public class McpToolClient {
 
     final WebClient mcpWebClient;
+    final WebClient perplexityMcpWebClient;
+    final McpMapper mcpMapper;
 
-    public McpToolClient( WebClient mcpWebClient ) {
+    public McpToolClient(WebClient mcpWebClient,
+                         @Qualifier("mcpPerplexityWebClient") WebClient perplexityMcpWebClient, McpMapper mcpMapper) {
         this.mcpWebClient = mcpWebClient;
+        this.perplexityMcpWebClient = perplexityMcpWebClient;
+        this.mcpMapper = mcpMapper;
     }
 
     /**
@@ -47,6 +50,17 @@ public class McpToolClient {
                     .bodyToFlux(McpTool.class)
                     .collectList()
                     .block();
+
+            List<McpTool> toolsP =  perplexityMcpWebClient.get()
+                    .uri("/api/tools")
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .retrieve()
+                    .bodyToFlux(McpTool.class)
+                    .collectList()
+                    .block();
+            if(!CollectionUtils.isEmpty(toolsP) && tools != null) {
+                tools.addAll(toolsP);
+            }
 
             log.info("✅ Retrieved {} MCP tools", tools != null ? tools.size() : 0);
             return tools;
@@ -75,15 +89,26 @@ public class McpToolClient {
                     .arguments(arguments)
                     .build();
 
+            ToolExecutionResponse result;
+            if(toolName.startsWith("perplexity_")) {
+                PerplexityToolResult perplexityToolResult = perplexityMcpWebClient.post()
+                        .uri("/api/execute")
+                        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .body(BodyInserters.fromValue(request))
+                        .retrieve()
+                        .bodyToMono(PerplexityToolResult.class)
+                        .block();
 
-            ToolExecutionResponse result =  mcpWebClient.post()
-                    .uri("/mcp/execute")
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .body(BodyInserters.fromValue(request))
-                    .retrieve()
-                    .bodyToMono(ToolExecutionResponse.class)
-                    .block();
-
+                result = mcpMapper.perplexityToolResultToToolExecutionResponse(perplexityToolResult);
+            }else {
+                result  = mcpWebClient.post()
+                        .uri("/mcp/execute")
+                        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .body(BodyInserters.fromValue(request))
+                        .retrieve()
+                        .bodyToMono(ToolExecutionResponse.class)
+                        .block();
+            }
 
             if (result != null && result.isSuccess()) {
                 log.info("✅ Tool '{}' executed successfully", toolName);

@@ -1,4 +1,4 @@
-package de.jivz.ai_challenge.config;
+package de.jivz.ai_challenge.configuration;
 
 import java.util.HashMap;
 import java.util.Map;

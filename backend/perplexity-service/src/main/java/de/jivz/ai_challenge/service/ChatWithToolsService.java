@@ -6,10 +6,11 @@ import de.jivz.ai_challenge.dto.ChatRequest;
 import de.jivz.ai_challenge.dto.ChatResponse;
 import de.jivz.ai_challenge.dto.Message;
 import de.jivz.ai_challenge.dto.SonarToolDto.*;
-import de.jivz.ai_challenge.service.mcp.McpToolClient;
-import de.jivz.ai_challenge.service.mcp.McpDto.*;
+import de.jivz.ai_challenge.mcp.model.McpToolClient;
+import de.jivz.ai_challenge.mcp.model.McpDto.*;
 import de.jivz.ai_challenge.service.perplexity.PerplexityToolClient;
 import de.jivz.ai_challenge.service.perplexity.model.PerplexityResponseWithMetrics;
+import de.jivz.ai_challenge.service.strategy.ReminderToolsPromptStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -43,66 +44,19 @@ public class ChatWithToolsService {
     private final McpToolClient mcpToolClient;
     private final ConversationHistoryService historyService;
     private final ObjectMapper objectMapper;
+    private final ReminderToolsPromptStrategy promptStrategy;
 
-    /**
-     * System prompt на русском языке.
-     * Объясняет модели формат ответа и доступные MCP-инструменты.
-     */
-    private static final String SYSTEM_PROMPT_WITH_TOOLS = """
-        Ты — умный ассистент, который может использовать внешние инструменты MCP для работы с Google Tasks.
-        
-        ## Доступные инструменты Google Tasks:
-        
-        1. **google_tasks_list** - Получить список всех списков задач
-           - Аргументы: нет
-        
-        2. **google_tasks_get** - Получить задачи из списка
-           - Аргументы: { "taskListId": "<id списка, опционально>" }
-        
-        3. **google_tasks_create** - Создать новую задачу
-           - Аргументы: { "title": "<название>", "notes": "<описание, опционально>", "taskListId": "<id списка, опционально>" }
-        
-        4. **google_tasks_update** - Обновить задачу
-           - Аргументы: { "taskId": "<id задачи>", "title": "<новое название>", "notes": "<новое описание>", "status": "needsAction|completed" }
-        
-        5. **google_tasks_complete** - Отметить задачу как выполненную
-           - Аргументы: { "taskId": "<id задачи>", "taskListId": "<id списка, опционально>" }
-        
-        6. **google_tasks_delete** - Удалить задачу
-           - Аргументы: { "taskId": "<id задачи>", "taskListId": "<id списка>" }
-        
-        ## Когда использовать инструменты:
-        - Используй инструменты ТОЛЬКО когда пользователь просит выполнить реальные действия с задачами
-        - Примеры: "покажи мои задачи", "создай задачу", "удали задачу", "отметь как выполненную"
-        - Для обычных вопросов и разговоров НЕ используй инструменты
-        
-        ## ABSOLUTES FORMAT - NUR REINES JSON, KEIN MARKDOWN:
-        
-        Wenn du Inструменты aufrufen musst, antworte nur mit JSON (OHNE ```json ... ``` Blöcke):
-        {"step":"tool","tool_calls":[{"name":"<tool_name>","arguments":{}}],"answer":""}
-        
-        Wenn du die finale Antwort gibst, antworte nur mit JSON (OHNE ```json ... ``` Blöcke):
-        {"step":"final","tool_calls":[],"answer":"<твой ответ пользователю>"}
-        
-        ## KRITISCHE REGELN:
-        - Antworte NUR mit reinem JSON-Objekt
-        - NIEMALS Markdown-Code-Blöcke (``` oder ```json) verwenden
-        - NIEMALS zusätzlicher Text vor oder nach dem JSON
-        - Das JSON-Objekt muss mit { beginnen und mit } enden
-        - Nach Erhalt von Tool-Ergebnissen einen verständlichen Antwort formulieren
-        - Bei Tool-Fehler dem Benutzer erklären was falsch gelaufen ist
-        - Mehrere Tools gleichzeitig aufrufen wenn nötig
-        """;
 
-    public ChatWithToolsService(
+   public ChatWithToolsService(
             PerplexityToolClient perplexityToolClient,
             McpToolClient mcpToolClient,
             ConversationHistoryService historyService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper, ReminderToolsPromptStrategy promptStrategy) {
         this.perplexityToolClient = perplexityToolClient;
         this.mcpToolClient = mcpToolClient;
         this.historyService = historyService;
         this.objectMapper = objectMapper;
+        this.promptStrategy = promptStrategy;
     }
 
     /**
@@ -146,6 +100,7 @@ public class ChatWithToolsService {
 
             // ====== ШАГ 1: Запрос к Sonar ======
             String sonarResponse = callSonar(messages, temperature);
+            log.info("📥 Sonar raw response: {}", sonarResponse);
             log.debug("📥 Sonar raw response: {}", sonarResponse);
 
             // ====== ШАГ 2: Парсинг JSON ответа ======
@@ -201,8 +156,12 @@ public class ChatWithToolsService {
     private List<Message> buildMessages(String conversationId, String userPrompt) {
         List<Message> messages = new ArrayList<>();
 
+        // 1. Получить текущие MCP Tools из Backend
+        List<McpTool> tools = fetchCurrentTools();
+        log.info("📋 Получено {} MCP tools", tools.size());
+
         // System prompt с описанием инструментов
-        messages.add(new Message("system", SYSTEM_PROMPT_WITH_TOOLS));
+        messages.add(new Message("system",  promptStrategy.buildDynamicSystemPrompt(tools)));
 
         // История разговора (если есть)
         if (conversationId != null) {
@@ -222,6 +181,18 @@ public class ChatWithToolsService {
 
         log.info("📝 Built {} messages for Sonar", messages.size());
         return messages;
+    }
+
+    /**
+     * Получить текущий список MCP Tools.
+     */
+    private List<McpTool> fetchCurrentTools() {
+        try {
+            return mcpToolClient.getAllTools();
+        } catch (Exception e) {
+            log.warn("⚠️ Не удалось получить MCP tools: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     /**
@@ -370,18 +341,6 @@ public class ChatWithToolsService {
 
         historyService.saveHistory(conversationId, history);
         log.info("💾 Saved conversation to history: {} messages", history.size());
-    }
-
-    /**
-     * Возвращает список доступных MCP Tools.
-     */
-    public List<McpTool> getAvailableTools() {
-        try {
-            return mcpToolClient.getAllTools();
-        } catch (Exception e) {
-            log.error("❌ Error getting available tools: {}", e.getMessage());
-            return List.of();
-        }
     }
 }
 

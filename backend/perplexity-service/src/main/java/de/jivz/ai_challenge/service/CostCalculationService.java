@@ -1,6 +1,6 @@
 package de.jivz.ai_challenge.service;
 
-import de.jivz.ai_challenge.config.ModelPricingConfig;
+import de.jivz.ai_challenge.configuration.ModelPricingConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

@@ -131,23 +131,6 @@ public class ChatController {
     }
 
     /**
-     * ⭐ GET verfügbare MCP Tools.
-     * Zeigt alle Tools die dem LLM zur Verfügung stehen.
-     *
-     * GET /api/chat/available-tools
-     */
-    @GetMapping("/available-tools")
-    public ResponseEntity<Map<String, Object>> getAvailableTools() {
-        log.info("Getting available MCP tools");
-        var tools = agentService.getAvailableMcpTools();
-        return ResponseEntity.ok(Map.of(
-                "count", tools.size(),
-                "tools", tools,
-                "timestamp", new Date().toString()
-        ));
-    }
-
-    /**
      * ⭐ NEW: Simple chat endpoint for tool-based workflow.
      *
      * Accepts just a prompt string and returns the final answer.

@@ -1,4 +1,4 @@
-package de.jivz.ai_challenge.config;
+package de.jivz.ai_challenge.configuration;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

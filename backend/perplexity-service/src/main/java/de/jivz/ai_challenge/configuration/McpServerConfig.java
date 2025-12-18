@@ -1,4 +1,4 @@
-package de.jivz.ai_challenge.config;
+package de.jivz.ai_challenge.configuration;
 
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
@@ -25,6 +25,27 @@ public class McpServerConfig {
             @Value("${mcp.service.url}") final String mcpServerUrl,
             final WebClient.Builder webClientBuilder) {
         final ConnectionProvider connectionProvider = ConnectionProvider.builder("mcp-server-connection-provider")
+                .maxIdleTime(Duration.ofSeconds(20)).lifo()
+                .build();
+
+        final HttpClient httpClient = HttpClient.create(connectionProvider)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+                .doOnConnected(connection ->
+                        connection.addHandlerLast(new ReadTimeoutHandler(30))
+                                .addHandlerLast(new WriteTimeoutHandler(30)));
+
+        return webClientBuilder
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .baseUrl(mcpServerUrl)
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
+
+    @Bean
+    public WebClient mcpPerplexityWebClient(
+            @Value("${perplexity.mcp.url}") final String mcpServerUrl,
+            final WebClient.Builder webClientBuilder) {
+        final ConnectionProvider connectionProvider = ConnectionProvider.builder("mcp-perplexisty-server-connection-provider")
                 .maxIdleTime(Duration.ofSeconds(20)).lifo()
                 .build();
 
