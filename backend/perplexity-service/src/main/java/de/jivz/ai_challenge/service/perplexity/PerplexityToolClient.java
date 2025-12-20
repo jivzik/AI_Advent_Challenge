@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public class PerplexityToolClient {
 
     private static final double DEFAULT_TEMPERATURE = 0.7;
-    private static final int DEFAULT_MAX_TOKENS = 500;
+    private static final int DEFAULT_MAX_TOKENS = 3000;
     private static final double DEFAULT_TOP_P = 0.9;
     private static final int LOG_PREVIEW_LENGTH = 100;
 

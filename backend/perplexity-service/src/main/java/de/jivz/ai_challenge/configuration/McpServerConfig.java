@@ -22,7 +22,7 @@ public class McpServerConfig {
 
     @Bean
     public WebClient mcpWebClient(
-            @Value("${mcp.service.url}") final String mcpServerUrl,
+            @Value("${service.mcp.url}") final String mcpServerUrl,
             final WebClient.Builder webClientBuilder) {
         final ConnectionProvider connectionProvider = ConnectionProvider.builder("mcp-server-connection-provider")
                 .maxIdleTime(Duration.ofSeconds(20)).lifo()
@@ -61,4 +61,26 @@ public class McpServerConfig {
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .build();
     }
+
+    @Bean
+    public WebClient mcpDockerMonitorWebClient(
+            @Value("${docker.monitor.mcp.url}") final String mcpServerUrl,
+            final WebClient.Builder webClientBuilder) {
+        final ConnectionProvider connectionProvider = ConnectionProvider.builder("docker-monitor-mcp-server-connection-provider")
+                .maxIdleTime(Duration.ofSeconds(20)).lifo()
+                .build();
+
+        final HttpClient httpClient = HttpClient.create(connectionProvider)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+                .doOnConnected(connection ->
+                        connection.addHandlerLast(new ReadTimeoutHandler(30))
+                                .addHandlerLast(new WriteTimeoutHandler(30)));
+
+        return webClientBuilder
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .baseUrl(mcpServerUrl)
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
+
 }

@@ -1,7 +1,7 @@
 package de.jivz.ai_challenge.service.strategy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.jivz.ai_challenge.service.mcp.McpDto.McpTool;
+import de.jivz.ai_challenge.mcp.model.ToolDefinition;
 import de.jivz.ai_challenge.service.openrouter.model.OpenRouterRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,14 +35,14 @@ public class OpenRouterToolsPromptStrategy {
      * @param mcpTools Liste der MCP Tools
      * @return Liste der OpenRouter Tool-Definitionen
      */
-    public List<OpenRouterRequest.Tool> convertToOpenRouterTools(List<McpTool> mcpTools) {
+    public List<OpenRouterRequest.Tool> convertToOpenRouterTools(List<ToolDefinition> mcpTools) {
         List<OpenRouterRequest.Tool> tools = new ArrayList<>();
 
         if (mcpTools == null || mcpTools.isEmpty()) {
             return tools;
         }
 
-        for (McpTool mcpTool : mcpTools) {
+        for (ToolDefinition mcpTool : mcpTools) {
             OpenRouterRequest.Tool.FunctionDefinition functionDef =
                 OpenRouterRequest.Tool.FunctionDefinition.builder()
                     .name(mcpTool.getName())

@@ -378,7 +378,7 @@ function startHttpServer() {
    *
    * Body: { "name": "tool_name", "arguments": {...} }
    */
-  app.post('/api/execute', async (req, res) => {
+  app.post('/api/tools/execute', async (req, res) => {
     try {
       const { toolName, arguments: args } = req.body;
 
@@ -456,7 +456,7 @@ function startHttpServer() {
     console.error(`   GET  /api/tools/:name`);
     console.error(`   POST /api/tools/search`);
     console.error(`   POST /api/tools/ask`);
-    console.error(`   POST /api/execute`);
+    console.error(`   POST /api/tools/execute`);
     console.error(`   GET  /api/status`);
   });
 }

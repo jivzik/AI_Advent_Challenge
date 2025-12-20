@@ -1,18 +1,21 @@
-package de.jivz.ai_challenge.service;
+package de.jivz.ai_challenge.batch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.jivz.ai_challenge.dto.Message;
+import de.jivz.ai_challenge.dto.StructuredSummaryDto;
+import de.jivz.ai_challenge.dto.SonarToolDto;
 import de.jivz.ai_challenge.dto.SonarToolDto.SonarToolResponse;
 import de.jivz.ai_challenge.dto.SonarToolDto.SummaryInfo;
 import de.jivz.ai_challenge.dto.SonarToolDto.ToolCall;
+import de.jivz.ai_challenge.dto.SonarToolDto.DueTask;
 import de.jivz.ai_challenge.entity.ReminderSummary;
 import de.jivz.ai_challenge.entity.ReminderSummary.Priority;
 import de.jivz.ai_challenge.entity.ReminderSummary.SummaryType;
+import de.jivz.ai_challenge.mcp.MCPFactory;
+import de.jivz.ai_challenge.mcp.model.MCPToolResult;
+import de.jivz.ai_challenge.mcp.model.ToolDefinition;
 import de.jivz.ai_challenge.repository.ReminderSummaryRepository;
-import de.jivz.ai_challenge.service.mcp.McpDto.McpTool;
-import de.jivz.ai_challenge.service.mcp.McpDto.ToolExecutionResponse;
-import de.jivz.ai_challenge.service.mcp.McpToolClient;
 import de.jivz.ai_challenge.service.perplexity.PerplexityToolClient;
 import de.jivz.ai_challenge.service.perplexity.model.PerplexityResponseWithMetrics;
 import de.jivz.ai_challenge.service.strategy.ReminderToolsPromptStrategy;
@@ -53,11 +56,12 @@ public class ReminderSchedulerService {
     private static final String STEP_TOOL = "tool";
     private static final String STEP_FINAL = "final";
 
-    private final McpToolClient mcpToolClient;
+
     private final PerplexityToolClient perplexityToolClient;
     private final ReminderSummaryRepository reminderRepository;
     private final ReminderToolsPromptStrategy promptStrategy;
     private final ObjectMapper objectMapper;
+    private final MCPFactory mcpFactory;
 
     @Value("${reminder.scheduler.enabled:true}")
     private boolean schedulerEnabled;
@@ -113,7 +117,8 @@ public class ReminderSchedulerService {
         log.info("🚀 Выполнение workflow напоминания для пользователя: {}", userId);
 
         // 1. Получить текущие MCP Tools из Backend
-        List<McpTool> tools = fetchCurrentTools();
+        List<ToolDefinition> tools = mcpFactory.getAllToolDefinitions();
+
         log.info("📋 Получено {} MCP tools", tools.size());
 
         // 2. Создать динамический системный промпт
@@ -136,17 +141,6 @@ public class ReminderSchedulerService {
         return summary;
     }
 
-    /**
-     * Получить текущий список MCP Tools.
-     */
-    private List<McpTool> fetchCurrentTools() {
-        try {
-            return mcpToolClient.getAllTools();
-        } catch (Exception e) {
-            log.warn("⚠️ Не удалось получить MCP tools: {}", e.getMessage());
-            return List.of();
-        }
-    }
 
     /**
      * Tool-Loop - похож на ChatWithToolsService.
@@ -180,10 +174,13 @@ public class ReminderSchedulerService {
             if (STEP_FINAL.equals(parsed.getStep())) {
                 log.info("✅ Получен финальный ответ после {} итерации(-ий)", iteration);
 
+                // Конвертируем SummaryInfo zu StructuredSummaryDto
+                StructuredSummaryDto structuredSummary = convertToStructuredSummaryDto(parsed.getSummary());
+
                 return new ToolLoopResult(
                     parsed.getAnswer() != null ? parsed.getAnswer() : "",
                     rawDataBuilder.toString(),
-                    parsed.getSummary()
+                    structuredSummary
                 );
             }
 
@@ -240,8 +237,9 @@ public class ReminderSchedulerService {
      * Парсит ответ Sonar как JSON.
      */
     private SonarToolResponse parseSonarResponse(String response) {
+        log.info("Response: {}", response);
         String cleaned = cleanJsonResponse(response);
-
+        log.info("Response Cleaned: {}", cleaned);
         try {
             return objectMapper.readValue(cleaned, SonarToolResponse.class);
         } catch (JsonProcessingException e) {
@@ -284,9 +282,10 @@ public class ReminderSchedulerService {
     /**
      * Выполняет MCP Tool.
      */
+
     private String executeMcpTool(ToolCall toolCall) {
         try {
-            ToolExecutionResponse result = mcpToolClient.executeTool(
+            MCPToolResult result = mcpFactory.route(
                 toolCall.getName(),
                 toolCall.getArguments() != null ? toolCall.getArguments() : Map.of()
             );
@@ -310,8 +309,9 @@ public class ReminderSchedulerService {
         String title = "Сводка по задачам";
         int itemsCount = 0;
         Priority priority = Priority.MEDIUM;
+        String content;
 
-        // Попытка извлечь метаданные из объекта SummaryInfo
+        // Попытка извлечь метаданные из объекта StructuredSummaryDto
         if (result.summaryInfo != null) {
             if (result.summaryInfo.getTitle() != null) {
                 title = result.summaryInfo.getTitle();
@@ -328,16 +328,24 @@ public class ReminderSchedulerService {
                     // Оставить значение по умолчанию
                 }
             }
-        }
 
-        // Построить структурированный контент со всей информацией
-        String fullContent = buildFullContent(result.answer, result.summaryInfo);
+            // Setze das summary field mit dem LLM answer
+            if (result.answer != null && !result.answer.isEmpty()) {
+                result.summaryInfo.setSummary(result.answer);
+            }
+
+            // Используем toMarkdownContent() для красивого форматирования
+            content = result.summaryInfo.toMarkdownContent();
+        } else {
+            // Fallback: используем ответ как содержание
+            content = result.answer;
+        }
 
         ReminderSummary summary = ReminderSummary.builder()
             .userId(userId)
             .summaryType(SummaryType.TASKS)
             .title(title)
-            .content(fullContent)
+            .content(content)
             .rawData(result.rawData)
             .itemsCount(itemsCount)
             .priority(priority)
@@ -392,54 +400,40 @@ public class ReminderSchedulerService {
     /**
      * Построить структурированный контент с ответом и SummaryInfo в виде Markdown.
      */
-    private String buildFullContent(String answer, SummaryInfo summaryInfo) {
-        StringBuilder content = new StringBuilder();
-
-        // Ответ как введение
-        if (answer != null && !answer.isBlank()) {
-            content.append(answer).append("\n\n");
-        }
-
+    private StructuredSummaryDto convertToStructuredSummaryDto(SummaryInfo summaryInfo) {
         if (summaryInfo == null) {
-            return content.toString().trim();
+            return null;
         }
 
-        // Highlights
-        if (summaryInfo.getHighlights() != null && !summaryInfo.getHighlights().isEmpty()) {
-            content.append("## 📌 Основные моменты\n\n");
-            for (String highlight : summaryInfo.getHighlights()) {
-                content.append("- ").append(highlight).append("\n");
+        List<StructuredSummaryDto.DueTaskDto> dueSoon = new ArrayList<>();
+        if (summaryInfo.getDueSoon() != null) {
+            for (DueTask task : summaryInfo.getDueSoon()) {
+                dueSoon.add(StructuredSummaryDto.DueTaskDto.builder()
+                    .task(task.getTask())
+                    .due(task.getDue())
+                    .build());
             }
-            content.append("\n");
         }
 
-        // Due Soon
-        if (summaryInfo.getDueSoon() != null && !summaryInfo.getDueSoon().isEmpty()) {
-            content.append("## ⏰ Скоро будут просрочены\n\n");
-            for (var task : summaryInfo.getDueSoon()) {
-                content.append("- **").append(task.getTask()).append("**");
-                if (task.getDue() != null && !task.getDue().isBlank()) {
-                    content.append(" — ").append(task.getDue());
-                }
-                content.append("\n");
+        List<StructuredSummaryDto.DueTaskDto> overdue = new ArrayList<>();
+        if (summaryInfo.getOverdue() != null) {
+            for (DueTask task : summaryInfo.getOverdue()) {
+                overdue.add(StructuredSummaryDto.DueTaskDto.builder()
+                    .task(task.getTask())
+                    .due(task.getDue())
+                    .build());
             }
-            content.append("\n");
         }
 
-        // Overdue
-        if (summaryInfo.getOverdue() != null && !summaryInfo.getOverdue().isEmpty()) {
-            content.append("## ⚠️ Просрочено\n\n");
-            for (var task : summaryInfo.getOverdue()) {
-                content.append("- **").append(task.getTask()).append("**");
-                if (task.getDue() != null && !task.getDue().isBlank()) {
-                    content.append(" — ").append(task.getDue());
-                }
-                content.append("\n");
-            }
-            content.append("\n");
-        }
-
-        return content.toString().trim();
+        return StructuredSummaryDto.builder()
+            .title(summaryInfo.getTitle())
+            .summary(null) // Will be set from LLM answer
+            .totalItems(summaryInfo.getTotalItems())
+            .priority(summaryInfo.getPriority())
+            .highlights(summaryInfo.getHighlights())
+            .dueSoon(dueSoon.isEmpty() ? null : dueSoon)
+            .overdue(overdue.isEmpty() ? null : overdue)
+            .build();
     }
 
     /**
@@ -448,7 +442,7 @@ public class ReminderSchedulerService {
     private record ToolLoopResult(
         String answer,
         String rawData,
-        SummaryInfo summaryInfo
+        StructuredSummaryDto summaryInfo
     ) {}
 }
 

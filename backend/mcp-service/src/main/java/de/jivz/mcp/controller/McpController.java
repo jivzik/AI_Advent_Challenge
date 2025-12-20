@@ -20,7 +20,7 @@ import java.util.Map;
  * REST Controller for MCP operations
  */
 @RestController
-@RequestMapping("/mcp")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 @Slf4j
 public class McpController {
@@ -64,7 +64,7 @@ public class McpController {
      * Execute a tool with given arguments
      * POST /mcp/execute
      */
-    @PostMapping("/execute")
+    @PostMapping("/tools/execute")
     public ResponseEntity<ToolExecutionResponse> executeTool(@RequestBody ToolExecutionRequest request) {
         log.info("Received request to execute tool: {}", request.getToolName());
 

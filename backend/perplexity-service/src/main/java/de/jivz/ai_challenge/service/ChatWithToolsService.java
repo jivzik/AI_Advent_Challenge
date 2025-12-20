@@ -6,8 +6,9 @@ import de.jivz.ai_challenge.dto.ChatRequest;
 import de.jivz.ai_challenge.dto.ChatResponse;
 import de.jivz.ai_challenge.dto.Message;
 import de.jivz.ai_challenge.dto.SonarToolDto.*;
-import de.jivz.ai_challenge.mcp.model.McpToolClient;
-import de.jivz.ai_challenge.mcp.model.McpDto.*;
+import de.jivz.ai_challenge.mcp.MCPFactory;
+import de.jivz.ai_challenge.mcp.model.MCPToolResult;
+import de.jivz.ai_challenge.mcp.model.ToolDefinition;
 import de.jivz.ai_challenge.service.perplexity.PerplexityToolClient;
 import de.jivz.ai_challenge.service.perplexity.model.PerplexityResponseWithMetrics;
 import de.jivz.ai_challenge.service.strategy.ReminderToolsPromptStrategy;
@@ -41,23 +42,23 @@ public class ChatWithToolsService {
     private static final String STEP_FINAL = "final";
 
     private final PerplexityToolClient perplexityToolClient;
-    private final McpToolClient mcpToolClient;
+
     private final ConversationHistoryService historyService;
     private final ObjectMapper objectMapper;
     private final ReminderToolsPromptStrategy promptStrategy;
+    private final MCPFactory mcpFactory;
 
 
    public ChatWithToolsService(
-            PerplexityToolClient perplexityToolClient,
-            McpToolClient mcpToolClient,
-            ConversationHistoryService historyService,
-            ObjectMapper objectMapper, ReminderToolsPromptStrategy promptStrategy) {
+           PerplexityToolClient perplexityToolClient,
+           ConversationHistoryService historyService,
+           ObjectMapper objectMapper, ReminderToolsPromptStrategy promptStrategy, MCPFactory mcpFactory) {
         this.perplexityToolClient = perplexityToolClient;
-        this.mcpToolClient = mcpToolClient;
         this.historyService = historyService;
         this.objectMapper = objectMapper;
         this.promptStrategy = promptStrategy;
-    }
+       this.mcpFactory = mcpFactory;
+   }
 
     /**
      * Главный метод: обрабатывает запрос с поддержкой MCP Tools.
@@ -100,7 +101,6 @@ public class ChatWithToolsService {
 
             // ====== ШАГ 1: Запрос к Sonar ======
             String sonarResponse = callSonar(messages, temperature);
-            log.info("📥 Sonar raw response: {}", sonarResponse);
             log.debug("📥 Sonar raw response: {}", sonarResponse);
 
             // ====== ШАГ 2: Парсинг JSON ответа ======
@@ -157,7 +157,7 @@ public class ChatWithToolsService {
         List<Message> messages = new ArrayList<>();
 
         // 1. Получить текущие MCP Tools из Backend
-        List<McpTool> tools = fetchCurrentTools();
+        List<ToolDefinition> tools = mcpFactory.getAllToolDefinitions();
         log.info("📋 Получено {} MCP tools", tools.size());
 
         // System prompt с описанием инструментов
@@ -181,18 +181,6 @@ public class ChatWithToolsService {
 
         log.info("📝 Built {} messages for Sonar", messages.size());
         return messages;
-    }
-
-    /**
-     * Получить текущий список MCP Tools.
-     */
-    private List<McpTool> fetchCurrentTools() {
-        try {
-            return mcpToolClient.getAllTools();
-        } catch (Exception e) {
-            log.warn("⚠️ Не удалось получить MCP tools: {}", e.getMessage());
-            return List.of();
-        }
     }
 
     /**
@@ -306,7 +294,7 @@ public class ChatWithToolsService {
         log.info("🔧 Executing MCP tool: {} with args: {}", toolCall.getName(), toolCall.getArguments());
 
         try {
-            ToolExecutionResponse result = mcpToolClient.executeTool(
+            MCPToolResult result = mcpFactory.route(
                     toolCall.getName(),
                     toolCall.getArguments() != null ? toolCall.getArguments() : Map.of()
             );

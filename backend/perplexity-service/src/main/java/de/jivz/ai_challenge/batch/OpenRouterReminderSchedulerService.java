@@ -1,16 +1,17 @@
-package de.jivz.ai_challenge.service;
+package de.jivz.ai_challenge.batch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.jivz.ai_challenge.dto.Message;
+import de.jivz.ai_challenge.dto.StructuredSummaryDto;
 import de.jivz.ai_challenge.entity.ReminderSummary;
 import de.jivz.ai_challenge.entity.ReminderSummary.Priority;
 import de.jivz.ai_challenge.entity.ReminderSummary.SummaryType;
+import de.jivz.ai_challenge.mcp.MCPFactory;
+import de.jivz.ai_challenge.mcp.model.MCPToolResult;
+import de.jivz.ai_challenge.mcp.model.ToolDefinition;
 import de.jivz.ai_challenge.repository.ReminderSummaryRepository;
-import de.jivz.ai_challenge.service.mcp.McpDto.McpTool;
-import de.jivz.ai_challenge.service.mcp.McpDto.ToolExecutionResponse;
-import de.jivz.ai_challenge.service.mcp.McpToolClient;
 import de.jivz.ai_challenge.service.openrouter.OpenRouterToolClient;
 import de.jivz.ai_challenge.service.openrouter.model.OpenRouterRequest;
 import de.jivz.ai_challenge.service.openrouter.model.OpenRouterResponse;
@@ -52,11 +53,11 @@ public class OpenRouterReminderSchedulerService {
     private static final String FINISH_REASON_TOOL_CALLS = "tool_calls";
     private static final String FINISH_REASON_STOP = "stop";
 
-    private final McpToolClient mcpToolClient;
     private final OpenRouterToolClient openRouterToolClient;
     private final ReminderSummaryRepository reminderRepository;
     private final OpenRouterToolsPromptStrategy promptStrategy;
     private final ObjectMapper objectMapper;
+    private final MCPFactory mcpFactory;
 
     @Value("${openrouter.reminder.scheduler.enabled:false}")
     private boolean schedulerEnabled;
@@ -115,7 +116,7 @@ public class OpenRouterReminderSchedulerService {
         log.info("🚀 Executing OpenRouter reminder workflow for user: {}", userId);
 
         // 1. Aktuelle MCP Tools vom Backend holen
-        List<McpTool> mcpTools = fetchCurrentTools();
+        List<ToolDefinition> mcpTools = mcpFactory.getAllToolDefinitions();
         log.info("📋 Fetched {} MCP tools", mcpTools.size());
 
         // 2. Tools in OpenRouter-Format konvertieren
@@ -143,17 +144,6 @@ public class OpenRouterReminderSchedulerService {
         return summary;
     }
 
-    /**
-     * Holt die aktuelle Liste der MCP Tools.
-     */
-    private List<McpTool> fetchCurrentTools() {
-        try {
-            return mcpToolClient.getAllTools();
-        } catch (Exception e) {
-            log.warn("⚠️ Could not fetch MCP tools: {}", e.getMessage());
-            return List.of();
-        }
-    }
 
     /**
      * Der Tool-Loop mit nativer OpenRouter Tool-Unterstützung.
@@ -215,7 +205,7 @@ public class OpenRouterReminderSchedulerService {
                     ? message.getContent()
                     : response.getReply();
 
-                SummaryInfo summaryInfo = parseSummaryInfo(finalAnswer);
+                StructuredSummaryDto summaryInfo = parseSummaryInfo(finalAnswer);
 
                 return new ToolLoopResult(
                     finalAnswer,
@@ -262,7 +252,7 @@ public class OpenRouterReminderSchedulerService {
         try {
             Map<String, Object> arguments = parseToolArguments(argumentsJson);
 
-            ToolExecutionResponse result = mcpToolClient.executeTool(toolName, arguments);
+            MCPToolResult result = mcpFactory.route(toolName, arguments);
 
             if (result.isSuccess()) {
                 return objectMapper.writeValueAsString(result.getResult());
@@ -293,9 +283,10 @@ public class OpenRouterReminderSchedulerService {
     }
 
     /**
-     * Parst SummaryInfo aus der finalen Antwort.
+     * Parst StructuredSummaryDto aus der finalen Antwort.
+     * Extrahiert Titel, Items, Priorität, Highlights, Due Soon, und Overdue.
      */
-    private SummaryInfo parseSummaryInfo(String answer) {
+    private StructuredSummaryDto parseSummaryInfo(String answer) {
         if (answer == null) {
             return null;
         }
@@ -305,10 +296,51 @@ public class OpenRouterReminderSchedulerService {
             String cleaned = cleanJsonResponse(answer);
             JsonNode node = objectMapper.readTree(cleaned);
 
-            return SummaryInfo.builder()
-                .title(node.has("title") ? node.get("title").asText() : null)
-                .totalItems(node.has("total_items") ? node.get("total_items").asInt() : null)
-                .priority(node.has("priority") ? node.get("priority").asText() : null)
+            // Extrahiere alle Felder mit Defaults
+            String title = node.has("title") ? node.get("title").asText() : "Aufgaben-Zusammenfassung (OpenRouter)";
+            String summary = node.has("content") ? node.get("content").asText() :
+                           node.has("summary") ? node.get("summary").asText() : null;
+            Integer totalItems = node.has("total_items") ? node.get("total_items").asInt() : 0;
+            String priority = node.has("priority") ? node.get("priority").asText() : "MEDIUM";
+
+            // Extrahiere Highlights
+            List<String> highlights = new ArrayList<>();
+            if (node.has("highlights") && node.get("highlights").isArray()) {
+                for (JsonNode h : node.get("highlights")) {
+                    highlights.add(h.asText());
+                }
+            }
+
+            // Extrahiere Due Soon Tasks
+            List<StructuredSummaryDto.DueTaskDto> dueSoon = new ArrayList<>();
+            if (node.has("due_soon") && node.get("due_soon").isArray()) {
+                for (JsonNode task : node.get("due_soon")) {
+                    dueSoon.add(StructuredSummaryDto.DueTaskDto.builder()
+                        .task(task.has("task") ? task.get("task").asText() : "")
+                        .due(task.has("due") ? task.get("due").asText() : "")
+                        .build());
+                }
+            }
+
+            // Extrahiere Overdue Tasks
+            List<StructuredSummaryDto.DueTaskDto> overdue = new ArrayList<>();
+            if (node.has("overdue") && node.get("overdue").isArray()) {
+                for (JsonNode task : node.get("overdue")) {
+                    overdue.add(StructuredSummaryDto.DueTaskDto.builder()
+                        .task(task.has("task") ? task.get("task").asText() : "")
+                        .due(task.has("due") ? task.get("due").asText() : "")
+                        .build());
+                }
+            }
+
+            return StructuredSummaryDto.builder()
+                .title(title)
+                .summary(summary)
+                .totalItems(totalItems)
+                .priority(priority)
+                .highlights(highlights.isEmpty() ? null : highlights)
+                .dueSoon(dueSoon.isEmpty() ? null : dueSoon)
+                .overdue(overdue.isEmpty() ? null : overdue)
                 .build();
 
         } catch (Exception e) {
@@ -345,31 +377,38 @@ public class OpenRouterReminderSchedulerService {
         String title = "Aufgaben-Zusammenfassung (OpenRouter)";
         int itemsCount = 0;
         Priority priority = Priority.MEDIUM;
+        String content;
 
-        // Versuche Metadaten aus dem SummaryInfo-Objekt zu extrahieren
+        // Versuche Metadaten aus dem StructuredSummaryDto-Objekt zu extrahieren
         if (result.summaryInfo != null) {
-            if (result.summaryInfo.title != null) {
-                title = result.summaryInfo.title;
+            if (result.summaryInfo.getTitle() != null) {
+                title = result.summaryInfo.getTitle();
             }
 
-            if (result.summaryInfo.totalItems != null) {
-                itemsCount = result.summaryInfo.totalItems;
+            if (result.summaryInfo.getTotalItems() != null) {
+                itemsCount = result.summaryInfo.getTotalItems();
             }
 
-            if (result.summaryInfo.priority != null) {
+            if (result.summaryInfo.getPriority() != null) {
                 try {
-                    priority = Priority.valueOf(result.summaryInfo.priority);
+                    priority = Priority.valueOf(result.summaryInfo.getPriority());
                 } catch (Exception e) {
                     // Default beibehalten
                 }
             }
+
+            // Nutze die toMarkdownContent()-Methode für schöne Formatierung
+            content = result.summaryInfo.toMarkdownContent();
+        } else {
+            // Fallback: Nutze die Rohantwort als Content
+            content = result.answer;
         }
 
         ReminderSummary summary = ReminderSummary.builder()
             .userId(userId)
             .summaryType(SummaryType.TASKS)
             .title(title)
-            .content(result.answer)
+            .content(content)
             .rawData(result.rawData)
             .itemsCount(itemsCount)
             .priority(priority)
@@ -406,17 +445,7 @@ public class OpenRouterReminderSchedulerService {
     private record ToolLoopResult(
         String answer,
         String rawData,
-        SummaryInfo summaryInfo
-    ) {}
-
-    /**
-     * Summary-Info DTO für Metadaten-Extraktion.
-     */
-    @lombok.Builder
-    private record SummaryInfo(
-        String title,
-        Integer totalItems,
-        String priority
+        StructuredSummaryDto summaryInfo
     ) {}
 }
 

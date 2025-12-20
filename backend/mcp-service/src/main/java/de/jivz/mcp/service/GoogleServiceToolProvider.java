@@ -22,9 +22,11 @@ public class GoogleServiceToolProvider implements ToolProvider {
     private final List<McpTool> availableTools;
     private final WebClient gsWebClient;
     private final ThreadLocal<String> currentTaskListId = new ThreadLocal<>();
+    private final GoogleServiceToolDefinition toolDefinition;
 
-    public GoogleServiceToolProvider(WebClient gsWebClient) {
+    public GoogleServiceToolProvider(WebClient gsWebClient, GoogleServiceToolDefinition toolDefinition) {
         this.gsWebClient = gsWebClient;
+        this.toolDefinition = toolDefinition;
         this.availableTools = initializeTools();
         log.info("Google Service Tool Provider initialized with {} tools", availableTools.size());
     }
@@ -64,137 +66,7 @@ public class GoogleServiceToolProvider implements ToolProvider {
      * Initialize Google Service Tools
      */
     private List<McpTool> initializeTools() {
-        List<McpTool> tools = new ArrayList<>();
-
-        // Tool 1: Get Task Lists
-        tools.add(McpTool.builder()
-                .name("google_tasks_list")
-                .description("Get all Google Tasks lists for the authenticated user")
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(),
-                        "required", List.of()
-                ))
-                .build());
-
-        // Tool 2: Get Tasks from a list
-        tools.add(McpTool.builder()
-                .name("google_tasks_get")
-                .description("Get all tasks from a specific Google Tasks list")
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "taskListId", Map.of(
-                                        "type", "string",
-                                        "description", "The ID of the task list (optional, uses default if not provided)"
-                                )
-                        ),
-                        "required", List.of()
-                ))
-                .build());
-
-        // Tool 3: Create Task
-        tools.add(McpTool.builder()
-                .name("google_tasks_create")
-                .description("Create a new task in a Google Tasks list")
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "taskListId", Map.of(
-                                        "type", "string",
-                                        "description", "The ID of the task list (optional, uses default if not provided)"
-                                ),
-                                "title", Map.of(
-                                        "type", "string",
-                                        "description", "The title of the task"
-                                ),
-                                "notes", Map.of(
-                                        "type", "string",
-                                        "description", "Notes or description for the task"
-                                ),
-                                "due", Map.of(
-                                        "type", "string",
-                                        "description", "Due date in ISO 8601 format (e.g., 2024-12-31T23:59:59Z)"
-                                )
-                        ),
-                        "required", List.of("title")
-                ))
-                .build());
-
-        // Tool 4: Update Task
-        tools.add(McpTool.builder()
-                .name("google_tasks_update")
-                .description("Update an existing task in Google Tasks")
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "taskListId", Map.of(
-                                        "type", "string",
-                                        "description", "The ID of the task list"
-                                ),
-                                "taskId", Map.of(
-                                        "type", "string",
-                                        "description", "The ID of the task to update"
-                                ),
-                                "title", Map.of(
-                                        "type", "string",
-                                        "description", "The new title of the task"
-                                ),
-                                "notes", Map.of(
-                                        "type", "string",
-                                        "description", "New notes or description"
-                                ),
-                                "status", Map.of(
-                                        "type", "string",
-                                        "description", "Task status (needsAction or completed)",
-                                        "enum", List.of("needsAction", "completed")
-                                )
-                        ),
-                        "required", List.of("taskId")
-                ))
-                .build());
-
-        // Tool 4b: Complete Task (convenience method)
-        tools.add(McpTool.builder()
-                .name("google_tasks_complete")
-                .description("Mark a task as completed in Google Tasks")
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "taskListId", Map.of(
-                                        "type", "string",
-                                        "description", "The ID of the task list"
-                                ),
-                                "taskId", Map.of(
-                                        "type", "string",
-                                        "description", "The ID of the task to mark as completed"
-                                )
-                        ),
-                        "required", List.of("taskId")
-                ))
-                .build());
-
-        // Tool 5: Delete Task
-        tools.add(McpTool.builder()
-                .name("google_tasks_delete")
-                .description("Delete a task from Google Tasks")
-                .inputSchema(Map.of(
-                        "type", "object",
-                        "properties", Map.of(
-                                "taskListId", Map.of(
-                                        "type", "string",
-                                        "description", "The ID of the task list"
-                                ),
-                                "taskId", Map.of(
-                                        "type", "string",
-                                        "description", "The ID of the task to delete"
-                                )
-                        ),
-                        "required", List.of("taskId")
-                ))
-                .build());
-
-        return tools;
+        return toolDefinition.getToolDefinitions();
     }
 
     /**
@@ -213,7 +85,7 @@ public class GoogleServiceToolProvider implements ToolProvider {
 
             return Map.of(
                     "success", true,
-                    "data", response
+                    "result", response
             );
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
@@ -250,12 +122,12 @@ public class GoogleServiceToolProvider implements ToolProvider {
                     .block();
 
             // Include taskListId in response so LLM can reference it
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("taskListId", taskListId != null ? taskListId : "default");
-            result.put("data", response);
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("success", true);
+            resultMap.put("taskListId", taskListId != null ? taskListId : "default");
+            resultMap.put("result", response);
 
-            return result;
+            return resultMap;
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(
@@ -301,12 +173,12 @@ public class GoogleServiceToolProvider implements ToolProvider {
                     .bodyToMono(Object.class)
                     .block();
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("taskListId", taskListId != null ? taskListId : "default");
-            result.put("data", response);
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("success", true);
+            resultMap.put("taskListId", taskListId != null ? taskListId : "default");
+            resultMap.put("result", response);
 
-            return result;
+            return resultMap;
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(
@@ -360,12 +232,12 @@ public class GoogleServiceToolProvider implements ToolProvider {
                     .bodyToMono(Object.class)
                     .block();
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("taskListId", taskListId != null ? taskListId : "default");
-            result.put("data", response);
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("success", true);
+            resultMap.put("taskListId", taskListId != null ? taskListId : "default");
+            resultMap.put("result", response);
 
-            return result;
+            return resultMap;
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(
@@ -407,12 +279,12 @@ public class GoogleServiceToolProvider implements ToolProvider {
                     .bodyToMono(Object.class)
                     .block();
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("taskListId", taskListId != null ? taskListId : "default");
-            result.put("data", response);
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("success", true);
+            resultMap.put("taskListId", taskListId != null ? taskListId : "default");
+            resultMap.put("result", response);
 
-            return result;
+            return resultMap;
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(
@@ -453,12 +325,12 @@ public class GoogleServiceToolProvider implements ToolProvider {
                     .toBodilessEntity()
                     .block();
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("taskListId", taskListId != null ? taskListId : "default");
-            result.put("message", "Task deleted successfully");
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("success", true);
+            resultMap.put("taskListId", taskListId != null ? taskListId : "default");
+            resultMap.put("result", "Task deleted successfully");
 
-            return result;
+            return resultMap;
         } catch (Exception e) {
             log.error("Error calling Google Service: {}", e.getMessage());
             return Map.of(

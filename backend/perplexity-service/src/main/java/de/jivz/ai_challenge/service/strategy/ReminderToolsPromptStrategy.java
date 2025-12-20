@@ -2,7 +2,7 @@ package de.jivz.ai_challenge.service.strategy;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.jivz.ai_challenge.service.mcp.McpDto.McpTool;
+import de.jivz.ai_challenge.mcp.model.ToolDefinition;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,19 +27,20 @@ public class ReminderToolsPromptStrategy {
     private final ObjectMapper objectMapper;
 
     /**
-     * Создает системный промпт с динамически внедренными MCP Tools.
+     * Formatiert MCP Tools für Perplexity-Prompt-Integration.
+     * Dies ist die Gegenstück zu convertToOpenRouterTools() in OpenRouterToolsPromptStrategy.
      *
-     * @param tools Список доступных MCP Tools
-     * @return Полный системный промпт
+     * @param tools Liste der MCP Tools die formatiert werden sollen
+     * @return Formatierte Tools-Beschreibung für den Prompt
      */
-    public String buildDynamicSystemPrompt(List<McpTool> tools) {
+    public String formatToolsForPrompt(List<ToolDefinition> tools) {
         StringBuilder toolsDescription = new StringBuilder();
 
         if (tools != null && !tools.isEmpty()) {
             toolsDescription.append("## Доступные MCP Tools:\n\n");
 
             for (int i = 0; i < tools.size(); i++) {
-                McpTool tool = tools.get(i);
+                ToolDefinition tool = tools.get(i);
                 toolsDescription.append(String.format("%d. **%s**\n", i + 1, tool.getName()));
                 toolsDescription.append(String.format("   - Описание: %s\n",
                     tool.getDescription() != null ? tool.getDescription() : "Описание недоступно"));
@@ -56,11 +57,23 @@ public class ReminderToolsPromptStrategy {
                 toolsDescription.append("\n");
             }
         } else {
-            toolsDescription.append("## MCP Tools не доступны\n\n");
-            toolsDescription.append("В настоящее время нет зарегистрированных внешних инструментов.\n\n");
+            toolsDescription.append("## MCP Tools nicht verfügbar\n\n");
+            toolsDescription.append("Derzeit sind keine externen Tools registriert.\n\n");
         }
 
-        return buildPromptTemplate(toolsDescription.toString());
+        log.debug("Formatted {} MCP tools for Perplexity prompt", tools != null ? tools.size() : 0);
+        return toolsDescription.toString();
+    }
+
+    /**
+     * Erstellt den System-Prompt mit dynamisch eingebetteten MCP Tools.
+     *
+     * @param tools Список доступных MCP Tools
+     * @return Полный системный промпт
+     */
+    public String buildDynamicSystemPrompt(List<ToolDefinition> tools) {
+        String toolsSection = formatToolsForPrompt(tools);
+        return buildPromptTemplate(toolsSection);
     }
 
     /**

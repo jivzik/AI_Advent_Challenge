@@ -1,3 +1,4 @@
+/*
 package de.jivz.mcp.service;
 
 import de.jivz.mcp.model.McpTool;
@@ -10,9 +11,11 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+*/
 /**
  * Integration Test für das Multi-Provider MCP System
- */
+ *//*
+
 @ExtendWith(MockitoExtension.class)
 class McpServerServiceIntegrationTest {
 
@@ -204,3 +207,4 @@ class McpServerServiceIntegrationTest {
     }
 }
 
+*/

@@ -1,0 +1,19 @@
+spring.application.name: mcp-docker-monitor
+spring.profiles.active: dev
+server.port: 8083
+
+# SSH Configuration (Apache MINA SSHD - supports ED25519, RSA SHA256+, OpenSSH format)
+ssh.host: ${SSH_HOST:localhost}                    # Хост удаленного сервера
+ssh.port: ${SSH_PORT:22}                                # SSH порт
+ssh.username: ${SSH_USERNAME:root}                   # SSH пользователь
+ssh.privateKeyPath: ${SSH_KEY_PATH:/home/user/.ssh/id_rsa}          # Путь к приватному SSH ключу (PEM или OpenSSH формат)
+#ssh.knownHostsPath: ${SSH_KNOWN_HOSTS:/home/user/.ssh/known_hosts}     # Опционально (MINA SSHD может работать без этого)
+ssh.connectionTimeout: 30000                   # Таймаут подключения в мс
+ssh.commandTimeout: 60000                      # Таймаут выполнения команды в мс
+
+logging.level.root: INFO
+logging.level.com.ai.advent.mcp.docker: INFO
+logging.pattern.console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+server.shutdown: graceful
+server.servlet.context-path: /
