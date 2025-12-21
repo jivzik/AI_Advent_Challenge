@@ -20,12 +20,19 @@
       >
         📋 Reminder Dashboard
       </button>
+      <button
+        @click="currentMode = 'openrouter'"
+        :class="{ active: currentMode === 'openrouter' }"
+      >
+        🔧 OpenRouter Tools
+      </button>
     </div>
 
     <!-- Component Display -->
     <ChatInterface v-if="currentMode === 'normal'" />
     <MetaPromptChat v-else-if="currentMode === 'meta'" />
     <ReminderDashboard v-else-if="currentMode === 'reminder'" />
+    <OpenRouterChat v-else-if="currentMode === 'openrouter'" />
   </div>
 </template>
 
@@ -34,8 +41,9 @@ import { ref } from 'vue';
 import ChatInterface from './components/ChatInterface.vue';
 import MetaPromptChat from './components/MetaPromptChat.vue';
 import ReminderDashboard from './components/ReminderDashboard.vue';
+import OpenRouterChat from './components/OpenRouterChat.vue';
 
-const currentMode = ref<'normal' | 'meta' | 'reminder'>('normal'); // Default to meta-prompt
+const currentMode = ref<'normal' | 'meta' | 'reminder' | 'openrouter'>('normal'); // Default to normal
 </script>
 
 

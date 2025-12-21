@@ -1,0 +1,337 @@
+openapi: 3.0.0
+info:
+  title: OpenRouter Spring AI Service API
+  description: |
+    REST API für die Integration von OpenRouter mit Spring AI.
+    OpenRouter bietet Zugang zu verschiedenen LLM-Modellen über eine einheitliche API.
+    Diese Service unterstützt einfache Chat-Anfragen, erweiterte Konfiguration, JSON-Responses und Streaming.
+  version: 1.0.0
+  contact:
+    name: AI Advent Challenge Team
+    url: https://github.com/jivz/AI_Advent_Challenge
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8084
+    description: Local Development Server
+  - url: https://api.example.com
+    description: Production Server
+
+tags:
+  - name: Chat
+    description: Chat-Operationen mit OpenRouter
+  - name: Health
+    description: Service Health Check
+
+paths:
+  /api/v1/openrouter/chat/simple:
+    post:
+      tags:
+        - Chat
+      summary: Einfache Chat-Anfrage
+      description: |
+        Sendet eine einfache Textnachricht an den LLM und erhält eine Antwort.
+        Verwendet Standard-Konfiguration aus application.properties.
+      operationId: simpleChat
+      parameters:
+        - name: message
+          in: query
+          required: true
+          description: Die Benutzernachricht
+          schema:
+            type: string
+            example: "Hallo, wie heißt du?"
+      responses:
+        '200':
+          description: Erfolgreiche Chat-Antwort
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              example:
+                reply: "Hallo! Ich bin ein KI-Assistent, der von OpenRouter bereitgestellt wird."
+                model: "openrouter/auto"
+                inputTokens: 10
+                outputTokens: 25
+                totalTokens: 35
+                cost: 0.0001
+                responseTimeMs: 1250
+                finishReason: "stop"
+        '500':
+          description: Interner Fehler
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/openrouter/chat/full:
+    post:
+      tags:
+        - Chat
+      summary: Chat-Anfrage mit erweiterten Parametern
+      description: |
+        Sendet eine Chat-Anfrage mit vollständiger Kontrolle über Parameter wie:
+        - Modellauswahl
+        - Temperatur (Kreativität)
+        - Maximale Token
+        - Gesprächsverlauf
+      operationId: fullChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            example:
+              message: "Erkläre mir Quantenmechanik"
+              model: "openrouter/auto"
+              temperature: 0.7
+              maxTokens: 2000
+              conversationHistory:
+                - "Hallo"
+                - "Hallo! Wie kann ich dir helfen?"
+      responses:
+        '200':
+          description: Erfolgreiche Chat-Antwort
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '400':
+          description: Ungültige Request-Parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Interner Fehler
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/openrouter/chat/json:
+    post:
+      tags:
+        - Chat
+      summary: Chat-Anfrage mit JSON-Response
+      description: |
+        Sendet eine Chat-Anfrage und formatiert die Antwort als strukturiertes JSON.
+        Nützlich für die Verarbeitung strukturierter Daten.
+      operationId: jsonChat
+      parameters:
+        - name: message
+          in: query
+          required: true
+          description: Die Benutzernachricht
+          schema:
+            type: string
+            example: "Gib mir eine Antwort im JSON-Format"
+      responses:
+        '200':
+          description: Erfolgreiche Chat-Antwort im JSON-Format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              example:
+                reply: '{"response": "Dies ist eine JSON-formatierte Antwort", "status": "success"}'
+                model: "openrouter/auto"
+                inputTokens: 15
+                outputTokens: 30
+                totalTokens: 45
+                cost: 0.00015
+                responseTimeMs: 1500
+                finishReason: "stop"
+        '500':
+          description: Interner Fehler
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/openrouter/chat/stream:
+    post:
+      tags:
+        - Chat
+      summary: Streaming Chat-Anfrage
+      description: |
+        Sendet eine Chat-Anfrage und erhält die Antwort als Stream.
+        Ideal für lange Antworten oder in Echtzeitanwendungen.
+      operationId: streamChat
+      parameters:
+        - name: message
+          in: query
+          required: true
+          description: Die Benutzernachricht
+          schema:
+            type: string
+            example: "Schreib eine kurze Geschichte"
+      responses:
+        '200':
+          description: Streaming Response
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: "Dies ist eine gestreamte Antwort..."
+        '500':
+          description: Interner Fehler
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/openrouter/chat/health:
+    get:
+      tags:
+        - Health
+      summary: Health Check
+      description: Überprüft ob der OpenRouter Chat Service läuft
+      operationId: health
+      responses:
+        '200':
+          description: Service läuft
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "OpenRouter Chat Service is running"
+
+components:
+  schemas:
+    ChatRequest:
+      type: object
+      description: Chat-Anfrage mit erweiterten Parametern
+      properties:
+        message:
+          type: string
+          description: Die Benutzernachricht
+          example: "Hallo, wie geht es dir?"
+        model:
+          type: string
+          description: |
+            Das zu verwendende Modell.
+            Wenn nicht angegeben, wird das Standard-Modell aus der Konfiguration verwendet.
+            Beispiele:
+            - openrouter/auto (Auto-Auswahl)
+            - gpt-3.5-turbo
+            - gpt-4
+            - claude-3-opus
+          example: "openrouter/auto"
+          default: "openrouter/auto"
+        temperature:
+          type: number
+          format: double
+          description: |
+            Kontrolle der Ausgabe-Kreativität.
+            - 0.0 = determinstisch
+            - 0.7 = Standard (ausgewogen)
+            - 1.0+ = sehr kreativ
+          minimum: 0.0
+          maximum: 2.0
+          example: 0.7
+          default: 0.7
+        maxTokens:
+          type: integer
+          description: |
+            Maximale Anzahl von Tokens in der Antwort.
+            - Höher = längere Antworten
+            - Standard = 1000
+          minimum: 1
+          maximum: 32000
+          example: 2000
+          default: 1000
+        conversationHistory:
+          type: array
+          description: |
+            Gesprächsverlauf für Kontext.
+            Wird für Multi-Turn-Konversationen verwendet.
+          items:
+            type: string
+          example:
+            - "Benutzer: Hallo"
+            - "KI: Hallo! Wie kann ich dir helfen?"
+
+    ChatResponse:
+      type: object
+      description: Response von einer Chat-Anfrage
+      properties:
+        reply:
+          type: string
+          description: Die Antwort des LLM
+          example: "Hallo! Mir geht es gut, danke der Nachfrage!"
+        model:
+          type: string
+          description: Das verwendete Modell
+          example: "openrouter/auto"
+        inputTokens:
+          type: integer
+          description: Anzahl der Tokens in der Eingabe
+          example: 10
+        outputTokens:
+          type: integer
+          description: Anzahl der Tokens in der Ausgabe
+          example: 25
+        totalTokens:
+          type: integer
+          description: Gesamte Anzahl der Tokens (Input + Output)
+          example: 35
+        cost:
+          type: number
+          format: double
+          description: Geschätzte Kosten in USD
+          example: 0.0001
+        responseTimeMs:
+          type: integer
+          description: Verarbeitungszeit in Millisekunden
+          example: 1250
+        finishReason:
+          type: string
+          description: |
+            Grund für die Beendigung der Antwort
+            - "stop" = Normal beendet
+            - "length" = Max Tokens erreicht
+            - "error" = Fehler
+          enum:
+            - "stop"
+            - "length"
+            - "error"
+            - "content_filter"
+          example: "stop"
+
+    ErrorResponse:
+      type: object
+      description: Error Response
+      properties:
+        error:
+          type: string
+          description: Fehlermeldung
+          example: "Internal Server Error"
+        message:
+          type: string
+          description: Detaillierte Fehlerbeschreibung
+          example: "Failed to connect to OpenRouter API"
+        timestamp:
+          type: string
+          format: date-time
+          description: Zeitstempel des Fehlers
+          example: "2025-12-21T17:20:00Z"
+        status:
+          type: integer
+          description: HTTP Status Code
+          example: 500
+
+  securitySchemes:
+    # Optional: Wenn Sie API-Key-Authentifizierung hinzufügen möchten
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: OpenRouter API Key
+
+# Optional: Security auf alle Endpoints anwenden
+# security:
+#   - ApiKeyAuth: []
+

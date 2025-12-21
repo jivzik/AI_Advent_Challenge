@@ -1,8 +1,5 @@
 package de.jivz.mcp.controller;
 
-import de.jivz.mcp.client.PerplexityServiceClient;
-import de.jivz.mcp.client.PerplexityServiceDto.PerplexityRequest;
-import de.jivz.mcp.client.PerplexityServiceDto.PerplexityResponse;
 import de.jivz.mcp.model.McpTool;
 import de.jivz.mcp.model.ToolExecutionRequest;
 import de.jivz.mcp.model.ToolExecutionResponse;
@@ -26,7 +23,6 @@ import java.util.Map;
 public class McpController {
 
     private final McpServerService mcpServerService;
-    private final PerplexityServiceClient perplexityServiceClient;
 
     /**
      * Get list of available MCP tools
@@ -200,62 +196,6 @@ public class McpController {
         } catch (Exception e) {
             log.error("Error listing tools for provider: {}", providerName, e);
             return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * Ask Perplexity with MCP Tools
-     * Perplexity kann dabei google-service und andere MCP-Tools nutzen
-     *
-     * POST /mcp/perplexity/ask
-     */
-    @PostMapping("/perplexity/ask")
-    public ResponseEntity<PerplexityResponse> askPerplexity(@RequestBody PerplexityRequest request) {
-        try {
-            log.info("Received Perplexity request: {} (useTools: {})",
-                    request.getQuery(), request.isUseTools());
-
-            PerplexityResponse response = perplexityServiceClient.askWithTools(
-                    request.getQuery(),
-                    request.isUseTools()
-            );
-
-            log.info("Perplexity response received. Tools used: {}", response.getToolsUsed());
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Error asking Perplexity", e);
-            return ResponseEntity.ok(PerplexityResponse.builder()
-                    .answer("Error: " + e.getMessage())
-                    .success(false)
-                    .error(e.getMessage())
-                    .build());
-        }
-    }
-
-    /**
-     * Search with Perplexity
-     *
-     * POST /mcp/perplexity/search
-     */
-    @PostMapping("/perplexity/search")
-    public ResponseEntity<PerplexityResponse> searchPerplexity(@RequestBody Map<String, String> request) {
-        try {
-            String query = request.get("query");
-            log.info("Received Perplexity search request: {}", query);
-
-            PerplexityResponse response = perplexityServiceClient.search(query);
-
-            log.info("Perplexity search response received");
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Error searching with Perplexity", e);
-            return ResponseEntity.ok(PerplexityResponse.builder()
-                    .answer("Error: " + e.getMessage())
-                    .success(false)
-                    .error(e.getMessage())
-                    .build());
         }
     }
 }

@@ -5,19 +5,17 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>de.ai.advent</groupId>
     <artifactId>mcp-docker-monitor</artifactId>
-    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>MCP Docker Monitor</name>
     <description>MCP Server for monitoring Docker containers through SSH</description>
 
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.0</version>
-        <relativePath/>
+        <groupId>de.jivz</groupId>
+        <artifactId>ai-advent-challenge-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <properties>
