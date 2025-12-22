@@ -83,4 +83,25 @@ public class McpServerConfig {
                 .build();
     }
 
+    @Bean
+    public WebClient ragMcpWebClient(
+            @Value("${rag.mcp.url}") final String mcpServerUrl,
+            final WebClient.Builder webClientBuilder) {
+        final ConnectionProvider connectionProvider = ConnectionProvider.builder("rag-mcp-server-connection-provider")
+                .maxIdleTime(Duration.ofSeconds(20)).lifo()
+                .build();
+
+        final HttpClient httpClient = HttpClient.create(connectionProvider)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+                .doOnConnected(connection ->
+                        connection.addHandlerLast(new ReadTimeoutHandler(60))
+                                .addHandlerLast(new WriteTimeoutHandler(60)));
+
+        return webClientBuilder
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .baseUrl(mcpServerUrl)
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
+
 }
