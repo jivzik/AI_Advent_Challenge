@@ -276,15 +276,17 @@
 
   .message {
     display: flex;
-    max-width: 85%;
+
 
     &.user {
       align-self: flex-end;
+      max-width: 100%;
 
       .message-content {
         background: $primary-gradient;
         color: $text-white;
         border-radius: $radius-lg $radius-lg 4px $radius-lg;
+        max-width: 100%;
       }
 
       .message-role {

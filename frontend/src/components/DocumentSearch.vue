@@ -276,10 +276,10 @@ const showSettings = ref(false);
 const availableDocuments = ref<string[]>([]);
 
 const searchParams = ref({
-  topK: 5,
-  threshold: 0.7,
+  topK: 10,
+  threshold: 0.35,
   searchMode: 'hybrid' as 'semantic' | 'keyword' | 'hybrid',
-  semanticWeight: 0.5,
+  semanticWeight: 0.6,
   documentFilter: [] as string[]
 });
 

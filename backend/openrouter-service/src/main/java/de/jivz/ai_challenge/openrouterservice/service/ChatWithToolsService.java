@@ -45,18 +45,21 @@ public class ChatWithToolsService {
     private final PromptLoaderService promptLoader;
     private final ObjectMapper objectMapper;
     private final de.jivz.ai_challenge.openrouterservice.config.OpenRouterProperties properties;
+    private final ConversationHistoryService historyService;
 
     public ChatWithToolsService(
             @Qualifier("openRouterWebClient") WebClient webClient,
             MCPFactory mcpFactory,
             PromptLoaderService promptLoader,
             ObjectMapper objectMapper,
-            de.jivz.ai_challenge.openrouterservice.config.OpenRouterProperties properties) {
+            de.jivz.ai_challenge.openrouterservice.config.OpenRouterProperties properties,
+            ConversationHistoryService historyService) {
         this.webClient = webClient;
         this.mcpFactory = mcpFactory;
         this.promptLoader = promptLoader;
         this.objectMapper = objectMapper;
         this.properties = properties;
+        this.historyService = historyService;
         log.info("ChatWithToolsService initialized");
     }
 
@@ -70,13 +73,19 @@ public class ChatWithToolsService {
         log.info("🚀 Starting chat with tools - Message: {}",
                 request.getMessage().substring(0, Math.min(50, request.getMessage().length())) + "...");
 
-        // 1. Nachrichten zusammenstellen (system + user)
-        List<Message> messages = buildMessages(request.getMessage());
+        String conversationId = request.getConversationId();
+        String userPrompt = request.getMessage();
+
+        // 1. Nachrichten zusammenstellen (system + history + user)
+        List<Message> messages = buildMessages(conversationId, userPrompt);
 
         // 2. Tool-Loop starten
         String finalAnswer = executeToolLoop(messages, request.getTemperature());
 
-        // 3. Response erstellen
+        // 3. In Historie speichern
+        saveToHistory(conversationId, userPrompt, finalAnswer);
+
+        // 4. Response erstellen
         return ChatResponse.builder()
                 .reply(finalAnswer)
                 .model(properties.getDefaultModel())
@@ -160,7 +169,7 @@ public class ChatWithToolsService {
     /**
      * Erstellt die Nachrichtenliste für OpenRouter.
      */
-    private List<Message> buildMessages(String userPrompt) {
+    private List<Message> buildMessages(String conversationId, String userPrompt) {
         List<Message> messages = new ArrayList<>();
 
         // 1. MCP Tools abrufen
@@ -175,7 +184,16 @@ public class ChatWithToolsService {
         String systemPrompt = promptLoader.buildSystemPromptWithToolsAndContext(tools, context);
         messages.add(new Message("system", systemPrompt));
 
-        // 4. User-Nachricht hinzufügen
+        // 4. Konversationshistorie laden und hinzufügen (wenn conversationId vorhanden)
+        if (conversationId != null && !conversationId.isBlank()) {
+            List<Message> history = historyService.getHistory(conversationId);
+            if (history != null && !history.isEmpty()) {
+                messages.addAll(history);
+                log.info("📝 Loaded {} messages from history for conversationId: {}", history.size(), conversationId);
+            }
+        }
+
+        // 5. User-Nachricht hinzufügen
         messages.add(new Message("user", userPrompt));
 
         log.info("📝 Built {} messages for OpenRouter", messages.size());
@@ -414,5 +432,23 @@ public class ChatWithToolsService {
             return String.format("ERROR: %s", e.getMessage());
         }
     }
-}
 
+    /**
+     * Speichert die Nachricht und die Antwort in der Konversationshistorie.
+     *
+     * @param conversationId die Konversations-ID
+     * @param userMessage die Benutzernachricht
+     * @param assistantReply die Antwort des Assistenten
+     */
+    private void saveToHistory(String conversationId, String userMessage, String assistantReply) {
+        if (conversationId == null || conversationId.isBlank()) {
+            log.debug("No conversationId provided, skipping history save");
+            return;
+        }
+
+        historyService.addMessage(conversationId, "user", userMessage);
+        historyService.addMessage(conversationId, "assistant", assistantReply);
+
+        log.info("💾 Saved conversation to history for conversationId: {}", conversationId);
+    }
+}

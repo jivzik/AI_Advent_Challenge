@@ -50,5 +50,10 @@ public class ChatRequest {
             Wird für besseres Verständnis verwendet.""",
             example = "[\"Hallo\", \"Hallo! Wie kann ich dir helfen?\"]")
     private List<String> conversationHistory;
-}
 
+    @Schema(description = """
+            Eindeutige ID der Konversation für Multi-Turn Gespräche.
+            Wenn vorhanden, werden vorherige Nachrichten aus dem Cache geladen.""",
+            example = "conv-12345")
+    private String conversationId;
+}

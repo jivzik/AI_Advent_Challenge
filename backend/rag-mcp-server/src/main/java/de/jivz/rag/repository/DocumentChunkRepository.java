@@ -75,7 +75,7 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
         ORDER BY c.embedding <=> cast(:queryEmbedding as vector)
         LIMIT :topK
         """, nativeQuery = true)
-    List<Object[]> findSimilarChunks(
+    List<DocumentChunk> findSimilarChunks(
             @Param("queryEmbedding") String queryEmbedding,
             @Param("topK") int topK,
             @Param("threshold") double threshold
@@ -101,7 +101,7 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
         ORDER BY c.embedding <=> cast(:queryEmbedding as vector)
         LIMIT :topK
         """, nativeQuery = true)
-    List<Object[]> findSimilarChunksInDocument(
+    List<DocumentChunk> findSimilarChunksInDocument(
             @Param("queryEmbedding") String queryEmbedding,
             @Param("documentId") Long documentId,
             @Param("topK") int topK,
@@ -132,7 +132,7 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
             c.created_at,
             ts_rank(c.text_vector, query) as relevance_score
         FROM document_chunks c,
-             plainto_tsquery('russian', :query) query
+             plainto_tsquery('simple', :query) query
         WHERE c.text_vector @@ query
         ORDER BY ts_rank(c.text_vector, query) DESC,
                  c.created_at DESC
@@ -162,7 +162,7 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
             c.created_at,
             ts_rank(c.text_vector, query) as relevance_score
         FROM document_chunks c,
-             plainto_tsquery('russian', :query) query
+             plainto_tsquery('simple', :query) query
         WHERE c.text_vector @@ query
           AND c.document_id = :documentId
         ORDER BY ts_rank(c.text_vector, query) DESC,
@@ -199,7 +199,7 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
             c.created_at,
             ts_rank(c.text_vector, query) as relevance_score
         FROM document_chunks c,
-             to_tsquery('russian', :query) query
+             to_tsquery('simple', :query) query
         WHERE c.text_vector @@ query
         ORDER BY ts_rank(c.text_vector, query) DESC,
                  c.created_at DESC

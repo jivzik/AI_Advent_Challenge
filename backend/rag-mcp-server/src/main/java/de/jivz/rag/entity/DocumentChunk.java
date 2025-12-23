@@ -61,5 +61,13 @@ public class DocumentChunk {
     @Column(name = "created_at")
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    /**
+     * Similarity score вычисляется в Query.
+     * Транзиент, так как эта колонка не существует в таблице,
+     * но заполняется результатом native Query.
+     */
+    @Transient
+    private Double similarity;
 }
 

@@ -153,8 +153,11 @@ public class RagService {
      * Семантический поиск по документам.
      */
     public List<SearchResultDto> search(String query, int topK, double threshold, Long documentId) {
-        log.info("🔍 Searching for: '{}' (topK={}, threshold={}, docId={})",
-                query, topK, threshold, documentId);
+        log.info("🔍 DIRECT SEARCH:");
+        log.info("  Query: '{}'", query);
+        log.info("  TopK: {}", topK);
+        log.info("  Threshold: {}", threshold);
+        log.info("  Mode: {}", documentId != null ? "IN DOCUMENT " +documentId : "GLOBAL" );
 
         // 1. Генерируем эмбеддинг для запроса
         float[] queryEmbedding = embeddingService.generateEmbedding(query);
@@ -166,7 +169,7 @@ public class RagService {
         String embeddingStr = embeddingService.embeddingToString(queryEmbedding);
 
         // 2. Выполняем поиск в pgvector
-        List<Object[]> results;
+        List<DocumentChunk> results;
         if (documentId != null) {
             results = chunkRepository.findSimilarChunksInDocument(
                     embeddingStr, documentId, topK, threshold);
@@ -176,7 +179,7 @@ public class RagService {
 
         // 3. Преобразуем результаты
         List<SearchResultDto> searchResults = new ArrayList<>();
-        for (Object[] row : results) {
+        for (DocumentChunk row : results) {
             SearchResultDto dto = mapToSearchResult(row);
             searchResults.add(dto);
         }
@@ -188,8 +191,8 @@ public class RagService {
     /**
      * Маппинг результата native query в DTO.
      */
-    @SuppressWarnings("unchecked")
-    private SearchResultDto mapToSearchResult(Object[] row) {
+//    @SuppressWarnings("unchecked")
+/*    private SearchResultDto mapToSearchResult(Object[] row) {
         // Порядок колонок из query:
         // id, document_id, document_name, chunk_index, chunk_text, metadata, created_at, similarity
         return SearchResultDto.builder()
@@ -201,6 +204,21 @@ public class RagService {
                 .metadata(parseMetadata(row[5]))
                 .createdAt(row[6] != null ? ((Timestamp) row[6]).toLocalDateTime() : null)
                 .similarity(row[7] != null ? ((Number) row[7]).doubleValue() : null)
+                .build();
+    }*/
+
+    private SearchResultDto mapToSearchResult(DocumentChunk row) {
+        // Порядок колонок из query:
+        // id, document_id, document_name, chunk_index, chunk_text, metadata, created_at, similarity
+        return SearchResultDto.builder()
+                .chunkId(row.getId())
+                .documentId(row.getDocument().getId())
+                .documentName(row.getDocumentName())
+                .chunkIndex(row.getChunkIndex())
+                .chunkText(row.getChunkText())
+                .metadata(parseMetadata(row.getMetadata()))
+                .createdAt(row.getCreatedAt())
+                .similarity(row.getSimilarity())
                 .build();
     }
 
