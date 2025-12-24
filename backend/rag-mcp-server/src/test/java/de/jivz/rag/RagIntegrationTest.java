@@ -1,25 +1,21 @@
 package de.jivz.rag;
 
 import de.jivz.rag.dto.DocumentDto;
-import de.jivz.rag.dto.SearchResultDto;
-import de.jivz.rag.entity.Document;
+import de.jivz.rag.repository.entity.Document;
 import de.jivz.rag.repository.DocumentChunkRepository;
 import de.jivz.rag.repository.DocumentRepository;
-import de.jivz.rag.service.RagService;
+import de.jivz.rag.service.RagFacade;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 /**
  * Integration тесты для RAG пайплайна.
@@ -31,7 +27,7 @@ import static org.mockito.Mockito.when;
 class RagIntegrationTest {
 
     @Autowired
-    private RagService ragService;
+    private RagFacade ragFacade;
 
     @Autowired
     private DocumentRepository documentRepository;
@@ -60,7 +56,7 @@ class RagIntegrationTest {
         documentRepository.save(doc);
 
         // When
-        List<DocumentDto> documents = ragService.getAllDocuments();
+        List<DocumentDto> documents = ragFacade.getAllDocuments();
 
         // Then
         assertThat(documents).hasSize(1);
@@ -80,7 +76,7 @@ class RagIntegrationTest {
         doc = documentRepository.save(doc);
 
         // When
-        boolean deleted = ragService.deleteDocument(doc.getId());
+        boolean deleted = ragFacade.deleteDocument(doc.getId());
 
         // Then
         assertThat(deleted).isTrue();
@@ -100,7 +96,7 @@ class RagIntegrationTest {
         documentRepository.save(doc);
 
         // When
-        boolean deleted = ragService.deleteDocumentByName("delete-by-name.txt");
+        boolean deleted = ragFacade.deleteDocumentByName("delete-by-name.txt");
 
         // Then
         assertThat(deleted).isTrue();
@@ -110,7 +106,7 @@ class RagIntegrationTest {
     @Test
     @DisplayName("Should return false when deleting non-existent document")
     void shouldReturnFalseWhenDeletingNonExistent() {
-        boolean deleted = ragService.deleteDocument(999999L);
+        boolean deleted = ragFacade.deleteDocument(999999L);
         assertThat(deleted).isFalse();
     }
 }

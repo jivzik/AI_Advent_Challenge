@@ -39,17 +39,60 @@ public class EmbeddingService {
     private long retryDelayMs;
 
     /**
-     * Генерирует эмбеддинг для одного текста.
+     * Включить instruction prefix для query эмбеддингов.
+     * Улучшает качество поиска для instruction-based моделей (Qwen3, E5).
+     */
+    @Value("${rag.embedding.use-instruction-prefix:false}")
+    private boolean useInstructionPrefix;
+
+    /**
+     * Instruction prefix для поисковых запросов.
+     */
+    @Value("${rag.embedding.query-instruction:Instruct: Given a question, retrieve relevant passages that answer the question.\\nQuery: }")
+    private String queryInstruction;
+
+    /**
+     * Instruction prefix для документов (при индексации).
+     */
+    @Value("${rag.embedding.document-instruction:}")
+    private String documentInstruction;
+
+    /**
+     * Генерирует эмбеддинг для поискового запроса.
+     * Добавляет instruction prefix если включено.
      */
     public float[] generateEmbedding(String text) {
-        List<float[]> embeddings = generateEmbeddings(List.of(text));
-        return embeddings.isEmpty() ? null : embeddings.get(0);
+        String processedText = useInstructionPrefix ? queryInstruction + text : text;
+        List<float[]> embeddings = generateEmbeddingsRaw(List.of(processedText));
+        return embeddings.isEmpty() ? null : embeddings.getFirst();
     }
+
+    /**
+     * Генерирует эмбеддинги для документов (без instruction prefix для query).
+     * Используется при индексации документов.
+     */
+    public List<float[]> generateEmbeddings(List<String> texts) {
+        if (texts == null || texts.isEmpty()) {
+            return List.of();
+        }
+
+        // Для документов добавляем document instruction (обычно пустой)
+        List<String> processedTexts = texts;
+        if (useInstructionPrefix && !documentInstruction.isEmpty()) {
+            processedTexts = texts.stream()
+                    .map(t -> documentInstruction + t)
+                    .toList();
+        }
+
+        return generateEmbeddingsRaw(processedTexts);
+    }
+
+
 
     /**
      * Генерирует эмбеддинги для списка текстов (batch processing).
      */
-    public List<float[]> generateEmbeddings(List<String> texts) {
+    public List<float[]> generateEmbeddingsRaw(List<String> texts) {
         if (texts == null || texts.isEmpty()) {
             return List.of();
         }
@@ -158,9 +201,5 @@ public class EmbeddingService {
         }
         sb.append("]");
         return sb.toString();
-    }
-
-    public int getEmbeddingDimension() {
-        return embeddingDimension;
     }
 }

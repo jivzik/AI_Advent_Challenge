@@ -1,4 +1,4 @@
-package de.jivz.rag.entity;
+package de.jivz.rag.repository.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

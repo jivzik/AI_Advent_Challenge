@@ -1,6 +1,6 @@
 package de.jivz.rag.repository;
 
-import de.jivz.rag.entity.Document;
+import de.jivz.rag.repository.entity.Document;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;

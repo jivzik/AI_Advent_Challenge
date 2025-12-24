@@ -1,3 +1,4 @@
+/*
 package de.jivz.rag.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -8,8 +9,8 @@ import de.jivz.rag.dto.FinalSearchResultDto;
 import de.jivz.rag.dto.MergedSearchResultDto;
 import de.jivz.rag.dto.RerankingStrategyConfig;
 import de.jivz.rag.dto.SearchResultDto;
-import de.jivz.rag.entity.Document;
-import de.jivz.rag.entity.DocumentChunk;
+import de.jivz.rag.repository.entity.Document;
+import de.jivz.rag.repository.entity.DocumentChunk;
 import de.jivz.rag.repository.DocumentChunkRepository;
 import de.jivz.rag.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,9 +27,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+*/
 /**
  * Главный сервис RAG - координирует загрузку, chunking, embedding и поиск.
- */
+ *//*
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -45,7 +48,8 @@ public class RagService {
     private final FinalSearchResultService finalSearchService;
     private final ObjectMapper objectMapper;
 
-    /**
+    */
+/**
      * Загружает и обрабатывает документ.
      *
      * Pipeline:
@@ -54,7 +58,8 @@ public class RagService {
      * 3. Разбиваем на чанки
      * 4. Генерируем эмбеддинги
      * 5. Сохраняем в pgvector
-     */
+     *//*
+
     @Transactional
     public DocumentDto uploadDocument(MultipartFile file) throws IOException {
         String fileName = file.getOriginalFilename();
@@ -125,9 +130,11 @@ public class RagService {
         }
     }
 
-    /**
+    */
+/**
      * Сохраняет чанк с эмбеддингом через native query.
-     */
+     *//*
+
     private void saveChunkWithEmbedding(Long documentId, String documentName,
                                         int chunkIndex, String chunkText,
                                         float[] embedding, Map<String, Object> metadata) {
@@ -149,9 +156,11 @@ public class RagService {
         }
     }
 
-    /**
+    */
+/**
      * Семантический поиск по документам.
-     */
+     *//*
+
     public List<SearchResultDto> search(String query, int topK, double threshold, Long documentId) {
         log.info("🔍 DIRECT SEARCH:");
         log.info("  Query: '{}'", query);
@@ -188,10 +197,13 @@ public class RagService {
         return searchResults;
     }
 
-    /**
+    */
+/**
      * Маппинг результата native query в DTO.
-     */
+     *//*
+
 //    @SuppressWarnings("unchecked")
+*/
 /*    private SearchResultDto mapToSearchResult(Object[] row) {
         // Порядок колонок из query:
         // id, document_id, document_name, chunk_index, chunk_text, metadata, created_at, similarity
@@ -205,7 +217,8 @@ public class RagService {
                 .createdAt(row[6] != null ? ((Timestamp) row[6]).toLocalDateTime() : null)
                 .similarity(row[7] != null ? ((Number) row[7]).doubleValue() : null)
                 .build();
-    }*/
+    }*//*
+
 
     private SearchResultDto mapToSearchResult(DocumentChunk row) {
         // Порядок колонок из query:
@@ -239,27 +252,33 @@ public class RagService {
         return null;
     }
 
-    /**
+    */
+/**
      * Получить все документы.
-     */
+     *//*
+
     public List<DocumentDto> getAllDocuments() {
         return documentRepository.findAll().stream()
                 .map(DocumentDto::fromEntity)
                 .toList();
     }
 
-    /**
+    */
+/**
      * Получить документ по ID.
-     */
+     *//*
+
     public DocumentDto getDocument(Long id) {
         return documentRepository.findById(id)
                 .map(DocumentDto::fromEntity)
                 .orElse(null);
     }
 
-    /**
+    */
+/**
      * Удалить документ и все его чанки.
-     */
+     *//*
+
     @Transactional
     public boolean deleteDocument(Long id) {
         if (documentRepository.existsById(id)) {
@@ -270,9 +289,11 @@ public class RagService {
         return false;
     }
 
-    /**
+    */
+/**
      * Удалить документ по имени.
-     */
+     *//*
+
     @Transactional
     public boolean deleteDocumentByName(String fileName) {
         return documentRepository.findByFileName(fileName)
@@ -284,14 +305,17 @@ public class RagService {
                 .orElse(false);
     }
 
-    /**
+    */
+/**
      * Получить чанки документа.
-     */
+     *//*
+
     public List<DocumentChunk> getDocumentChunks(Long documentId) {
         return chunkRepository.findByDocumentId(documentId);
     }
 
-    /**
+    */
+/**
      * Полнотекстовый поиск по ключевым словам.
      *
      * Использует встроенный FTS PostgreSQL для быстрого поиска.
@@ -300,27 +324,31 @@ public class RagService {
      * @param query текст для поиска
      * @param topK максимальное количество результатов
      * @return список результатов, отсортированных по релевантности
-     */
+     *//*
+
     public List<SearchResultDto> keywordSearch(String query, int topK) {
         log.info("🔍 Keyword search: query='{}', topK={}", query, topK);
         return keywordSearchService.keywordSearch(query, topK);
     }
 
-    /**
+    */
+/**
      * Полнотекстовый поиск в конкретном документе.
      *
      * @param query текст для поиска
      * @param documentId ID документа
      * @param topK максимальное количество результатов
      * @return список результатов из документа
-     */
+     *//*
+
     public List<SearchResultDto> keywordSearchInDocument(String query, Long documentId, int topK) {
         log.info("🔍 Keyword search in document: query='{}', docId={}, topK={}",
                 query, documentId, topK);
         return keywordSearchService.keywordSearchInDocument(query, documentId, topK);
     }
 
-    /**
+    */
+/**
      * Расширенный поиск с поддержкой операторов.
      *
      * Поддерживает:
@@ -331,13 +359,15 @@ public class RagService {
      * @param query tsquery выражение
      * @param topK максимальное количество результатов
      * @return список результатов
-     */
+     *//*
+
     public List<SearchResultDto> advancedKeywordSearch(String query, int topK) {
         log.info("🔍 Advanced keyword search: query='{}', topK={}", query, topK);
         return keywordSearchService.advancedKeywordSearch(query, topK);
     }
 
-    /**
+    */
+/**
      * Поиск с расширенным ранжированием (ts_rank_cd).
      *
      * Более точное вычисление релевантности:
@@ -349,7 +379,8 @@ public class RagService {
      * @param query текст для поиска
      * @param topK максимальное количество результатов
      * @return список результатов с улучшенным ранжированием
-     */
+     *//*
+
     public List<SearchResultDto> advancedRankedKeywordSearch(String query, int topK) {
         log.info("🔍 Advanced ranked keyword search: query='{}', topK={}", query, topK);
         return keywordSearchService.advancedSearch(query, topK);
@@ -357,7 +388,8 @@ public class RagService {
 
     // ============ ЭТАП 4: Reranking (Переранжирование) ============
 
-    /**
+    */
+/**
      * Переранжирует результаты поиска с использованием выбранной стратегии.
      *
      * ЭТАП 4: Reranking (переранжирование)
@@ -379,7 +411,8 @@ public class RagService {
      * @param results результаты для переранжирования
      * @param config конфигурация стратегии
      * @return переранжированные результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> rerankResults(
             List<MergedSearchResultDto> results,
             RerankingStrategyConfig config) {
@@ -391,7 +424,8 @@ public class RagService {
         return rerankingService.rerank(results, config);
     }
 
-    /**
+    */
+/**
      * Переранжирует результаты с использованием стратегии WEIGHTED_SUM.
      *
      * Рекомендация:
@@ -403,7 +437,8 @@ public class RagService {
      * @param semanticWeight вес семантического поиска (0.0 - 1.0)
      * @param keywordWeight вес ключевого поиска (0.0 - 1.0)
      * @return переранжированные результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> rerankWeightedSum(
             List<MergedSearchResultDto> results,
             double semanticWeight,
@@ -415,17 +450,20 @@ public class RagService {
         return rerankingService.rerankWeightedSum(results, semanticWeight, keywordWeight);
     }
 
-    /**
+    */
+/**
      * Переранжирует результаты с использованием стратегии WEIGHTED_SUM по умолчанию (0.6/0.4).
      *
      * @param results результаты для переранжирования
      * @return переранжированные результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> rerankWeightedSum(List<MergedSearchResultDto> results) {
         return rerankingService.rerankDefault(results);
     }
 
-    /**
+    */
+/**
      * Переранжирует результаты с использованием стратегии MAX_SCORE.
      *
      * Логика:
@@ -436,13 +474,15 @@ public class RagService {
      *
      * @param results результаты для переранжирования
      * @return переранжированные результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> rerankMaxScore(List<MergedSearchResultDto> results) {
         log.info("🔄 Reranking with MAX_SCORE");
         return rerankingService.rerankMaxScore(results);
     }
 
-    /**
+    */
+/**
      * Переранжирует результаты с использованием стратегии RRF (Reciprocal Rank Fusion).
      *
      * Концепция:
@@ -460,23 +500,27 @@ public class RagService {
      * @param results результаты для переранжирования
      * @param k константа k для RRF
      * @return переранжированные результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> rerankRRF(List<MergedSearchResultDto> results, int k) {
         log.info("🔄 Reranking with RRF: k={}", k);
         return rerankingService.rerankRRF(results, k);
     }
 
-    /**
+    */
+/**
      * Переранжирает результаты с использованием стратегии RRF с k=60 по умолчанию.
      *
      * @param results результаты для переранжирования
      * @return переранжированные результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> rerankRRF(List<MergedSearchResultDto> results) {
         return rerankingService.rerankRRF(results);
     }
 
-    /**
+    */
+/**
      * Гибридный поиск - объединение семантического и ключевого поиска.
      *
      * ЭТАП 3: Объединение результатов (Merging)
@@ -494,7 +538,8 @@ public class RagService {
      * @param semanticWeight вес семантического поиска (0.0-1.0)
      * @param keywordWeight вес ключевого поиска (0.0-1.0)
      * @return объединённые результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> hybridSearch(
             String query,
             int topK,
@@ -528,14 +573,16 @@ public class RagService {
         return rerankedResults;
     }
 
-    /**
+    */
+/**
      * Гибридный поиск с параметрами по умолчанию (semantic: 0.6, keyword: 0.4).
      *
      * @param query текст для поиска
      * @param topK максимальное количество результатов
      * @param threshold минимальная оценка для семантического поиска
      * @return объединённые результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> hybridSearch(
             String query,
             int topK,
@@ -543,20 +590,23 @@ public class RagService {
         return hybridSearch(query, topK, threshold, 0.6, 0.4);
     }
 
-    /**
+    */
+/**
      * Гибридный поиск с параметрами по умолчанию (threshold: 0.5).
      *
      * @param query текст для поиска
      * @param topK максимальное количество результатов
      * @return объединённые результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> hybridSearch(
             String query,
             int topK) {
         return hybridSearch(query, topK, 0.5);
     }
 
-    /**
+    */
+/**
      * Гибридный поиск в конкретном документе.
      *
      * ЭТАП 3-4: Объединение и переранжирование результатов
@@ -568,7 +618,8 @@ public class RagService {
      * @param semanticWeight вес семантического поиска
      * @param keywordWeight вес ключевого поиска
      * @return объединённые и переранжированные результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> hybridSearchInDocument(
             String query,
             Long documentId,
@@ -603,14 +654,16 @@ public class RagService {
         return rerankedResults;
     }
 
-    /**
+    */
+/**
      * Гибридный поиск в документе с параметрами по умолчанию.
      *
      * @param query текст для поиска
      * @param documentId ID документа
      * @param topK максимальное количество результатов
      * @return объединённые результаты
-     */
+     *//*
+
     public List<MergedSearchResultDto> hybridSearchInDocument(
             String query,
             Long documentId,
@@ -620,7 +673,8 @@ public class RagService {
 
     // ============ ЭТАП 5: Финальная сортировка и фильтрация ============
 
-    /**
+    */
+/**
      * Выполняет финальную сортировку и фильтрацию результатов.
      *
      * ЭТАП 5: Финальная сортировка и фильтрация
@@ -635,7 +689,8 @@ public class RagService {
      * @param mergedResults объединённые результаты (выход ЭТАП 4)
      * @param config конфигурация сортировки и фильтрации
      * @return финальные результаты с метаданными
-     */
+     *//*
+
     public List<FinalSearchResultDto> finalizeResults(
             List<MergedSearchResultDto> mergedResults,
             FinalRankingConfig config) {
@@ -644,27 +699,31 @@ public class RagService {
         return finalSearchService.finalizeResults(mergedResults, config);
     }
 
-    /**
+    */
+/**
      * Финализирует результаты с параметрами по умолчанию.
      *
      * Default: threshold=0.3, topK=10
      *
      * @param mergedResults объединённые результаты
      * @return финализированные результаты
-     */
+     *//*
+
     public List<FinalSearchResultDto> finalizeDefault(List<MergedSearchResultDto> mergedResults) {
         log.info("🎯 ЭТАП 5: Finalizing {} results (default config)", mergedResults.size());
         return finalSearchService.finalizeDefault(mergedResults);
     }
 
-    /**
+    */
+/**
      * Финализирует результаты с пользовательским порогом и topK.
      *
      * @param mergedResults объединённые результаты
      * @param minScoreThreshold минимальный порог (0.0 - 1.0)
      * @param topK максимальное количество результатов
      * @return финализированные результаты
-     */
+     *//*
+
     public List<FinalSearchResultDto> finalizeWithThreshold(
             List<MergedSearchResultDto> mergedResults,
             double minScoreThreshold,
@@ -674,7 +733,8 @@ public class RagService {
         return finalSearchService.finalizeWithThreshold(mergedResults, minScoreThreshold, topK);
     }
 
-    /**
+    */
+/**
      * Финализирует результаты с разнообразностью (ограничение на макс чанков с документа).
      *
      * Полезно для получения результатов с разных документов.
@@ -683,7 +743,8 @@ public class RagService {
      * @param topK максимальное количество результатов
      * @param maxChunksPerDocument максимум чанков с одного документа
      * @return финализированные результаты (diversified)
-     */
+     *//*
+
     public List<FinalSearchResultDto> finalizeWithDiversification(
             List<MergedSearchResultDto> mergedResults,
             int topK,
@@ -695,13 +756,15 @@ public class RagService {
                 mergedResults, topK, maxChunksPerDocument);
     }
 
-    /**
+    */
+/**
      * Финализирует результаты с удалением дубликатов.
      *
      * @param mergedResults объединённые результаты
      * @param topK максимальное количество результатов
      * @return финализированные результаты без дубликатов
-     */
+     *//*
+
     public List<FinalSearchResultDto> finalizeWithDeduplication(
             List<MergedSearchResultDto> mergedResults,
             int topK) {
@@ -712,7 +775,8 @@ public class RagService {
 
     // ============ Полный pipeline гибридного поиска с финализацией ============
 
-    /**
+    */
+/**
      * Выполняет полный pipeline гибридного поиска со всеми этапами:
      * ЭТАП 1: Embedding (семантический поиск)
      * ЭТАП 2: Keyword Search (полнотекстовый поиск)
@@ -725,7 +789,8 @@ public class RagService {
      * @param threshold минимальный порог для финализации
      * @param maxChunksPerDocument максимум чанков с одного документа (для разнообразия)
      * @return финальные результаты (отсортированные, отфильтрованные, с метаданными)
-     */
+     *//*
+
     public List<FinalSearchResultDto> hybridSearchFinal(
             String query,
             int topK,
@@ -748,7 +813,8 @@ public class RagService {
         return finalSearchService.finalizeResults(merged, config);
     }
 
-    /**
+    */
+/**
      * Выполняет полный pipeline с параметрами по умолчанию.
      *
      * Default: threshold=0.3, maxChunksPerDocument=2
@@ -756,12 +822,14 @@ public class RagService {
      * @param query текст для поиска
      * @param topK максимальное количество финальных результатов
      * @return финальные результаты
-     */
+     *//*
+
     public List<FinalSearchResultDto> hybridSearchFinal(String query, int topK) {
         return hybridSearchFinal(query, topK, 0.3, 2);
     }
 
-    /**
+    */
+/**
      * Гибридный поиск, комбинирующий семантический и ключевой поиск.
      *
      * @param query Поисковый запрос
@@ -769,7 +837,8 @@ public class RagService {
      * @param threshold Порог сходства для семантического поиска
      * @param semanticWeight Вес семантического поиска (0.0-1.0), остаток идет на ключевой поиск
      * @return Список объединенных результатов
-     */
+     *//*
+
     public List<SearchResultDto> hybridSearch(String query, int topK, double threshold, double semanticWeight) {
         log.info("🔄 Hybrid search: query='{}', topK={}, threshold={}, semanticWeight={}",
                 query, topK, threshold, semanticWeight);
@@ -834,3 +903,4 @@ public class RagService {
         return finalResults;
     }
 }
+*/

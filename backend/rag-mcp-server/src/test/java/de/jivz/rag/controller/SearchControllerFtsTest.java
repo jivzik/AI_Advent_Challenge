@@ -1,8 +1,8 @@
 package de.jivz.rag.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.jivz.rag.dto.SearchResultDto;
-import de.jivz.rag.service.RagService;
+import de.jivz.rag.dto.SearchRequest;
+import de.jivz.rag.service.RagFacade;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +13,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -36,7 +32,7 @@ class SearchControllerFtsTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private RagService ragService;
+    private RagFacade ragFacade;
 
     // ==================== Keyword Search Tests ====================
 
@@ -44,7 +40,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/keywords should accept valid request")
     void testKeywordSearchValidRequest() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 5)
+                SearchRequest.builder()
+                        .query("test")
+                        .topK(5)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/keywords")
@@ -61,7 +60,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/keywords should reject empty query")
     void testKeywordSearchEmptyQuery() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("", 5)
+                SearchRequest.builder()
+                        .query("")
+                        .topK(5)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/keywords")
@@ -74,8 +76,12 @@ class SearchControllerFtsTest {
     @Test
     @DisplayName("POST /api/search/keywords should use default topK if not provided")
     void testKeywordSearchDefaultTopK() throws Exception {
+        SearchRequest searchRequest = SearchRequest.builder()
+                .query("test")
+                .topK(null)
+                .build();
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", null)
+                searchRequest
         );
 
         mockMvc.perform(post("/api/search/keywords")
@@ -88,8 +94,12 @@ class SearchControllerFtsTest {
     @Test
     @DisplayName("POST /api/search/keywords response should have correct structure")
     void testKeywordSearchResponseStructure() throws Exception {
+        SearchRequest searchRequest = SearchRequest.builder()
+                .query("test")
+                .topK(10)
+                .build();
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 10)
+                searchRequest
         );
 
         MvcResult result = mockMvc.perform(post("/api/search/keywords")
@@ -110,8 +120,12 @@ class SearchControllerFtsTest {
     @Test
     @DisplayName("POST /api/search/keywords/document/{id} should accept valid request")
     void testKeywordSearchInDocumentValidRequest() throws Exception {
+        SearchRequest searchRequest = SearchRequest.builder()
+                .query("test")
+                .topK(5)
+                .build();
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 5)
+                searchRequest
         );
 
         mockMvc.perform(post("/api/search/keywords/document/1")
@@ -127,7 +141,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/keywords/document/{id} should reject invalid document ID")
     void testKeywordSearchInDocumentInvalidId() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 5)
+                SearchRequest.builder()
+                        .query("test")
+                        .topK(5)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/keywords/document/0")
@@ -141,7 +158,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/keywords/document/{id} should reject empty query")
     void testKeywordSearchInDocumentEmptyQuery() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("", 5)
+                SearchRequest.builder()
+                        .query("test")
+                        .topK(5)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/keywords/document/1")
@@ -156,8 +176,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/advanced should accept valid request")
     void testAdvancedSearchValidRequest() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.AdvancedSearchRequest("python & java", 10)
-        );
+                SearchRequest.builder()
+                        .query("python & java")
+                        .topK(10)
+                        .build());
 
         mockMvc.perform(post("/api/search/advanced")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -172,7 +194,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/advanced should handle AND operator")
     void testAdvancedSearchAND() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.AdvancedSearchRequest("test & advanced", 10)
+                SearchRequest.builder()
+                        .query("test & advanced")
+                        .topK(10)
+                        .build()
         );
 
         MvcResult result = mockMvc.perform(post("/api/search/advanced")
@@ -188,7 +213,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/advanced should handle OR operator")
     void testAdvancedSearchOR() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.AdvancedSearchRequest("test | advanced", 10)
+                SearchRequest.builder()
+                        .query("test | advanced")
+                        .topK(10)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/advanced")
@@ -201,7 +229,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/advanced should handle NOT operator")
     void testAdvancedSearchNOT() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.AdvancedSearchRequest("test & !advanced", 10)
+                SearchRequest.builder()
+                        .query("test & !advanced")
+                        .topK(10)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/advanced")
@@ -214,7 +245,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/advanced should reject empty query")
     void testAdvancedSearchEmptyQuery() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.AdvancedSearchRequest("", 10)
+                SearchRequest.builder()
+                        .query("")
+                        .topK(10)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/advanced")
@@ -229,7 +263,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/ranked should accept valid request")
     void testRankedSearchValidRequest() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 10)
+                SearchRequest.builder()
+                        .query("test")
+                        .topK(10)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/ranked")
@@ -244,7 +281,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/ranked should include ranking method in response")
     void testRankedSearchRankingMethod() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 5)
+                SearchRequest.builder()
+                        .query("test")
+                        .topK(5)
+                        .build()
         );
 
         MvcResult result = mockMvc.perform(post("/api/search/ranked")
@@ -261,7 +301,10 @@ class SearchControllerFtsTest {
     @DisplayName("POST /api/search/ranked should reject empty query")
     void testRankedSearchEmptyQuery() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("", 5)
+                SearchRequest.builder()
+                        .query("")
+                        .topK(5)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/ranked")
@@ -282,7 +325,10 @@ class SearchControllerFtsTest {
         };
 
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 5)
+                SearchRequest.builder()
+                        .query("test")
+                        .topK(5)
+                        .build()
         );
 
         for (String endpoint : endpoints) {
@@ -298,7 +344,7 @@ class SearchControllerFtsTest {
     @DisplayName("Result items should have correct structure")
     void testResultItemStructure() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 5)
+                SearchRequest.builder().query("test").topK(5).build()
         );
 
         mockMvc.perform(post("/api/search/keywords")
@@ -319,7 +365,7 @@ class SearchControllerFtsTest {
     void testMalformedJsonRequest() throws Exception {
         mockMvc.perform(post("/api/search/keywords")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{invalid json"))
+                .content("\"{invalid json\""))
                 .andExpect(status().is4xxClientError());
     }
 
@@ -338,7 +384,10 @@ class SearchControllerFtsTest {
     @DisplayName("Should handle null query gracefully")
     void testNullQuery() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest(null, 5)
+                SearchRequest.builder()
+                        .query(null)
+                        .topK(5)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/keywords")
@@ -353,7 +402,10 @@ class SearchControllerFtsTest {
     @DisplayName("Keyword search endpoint should respond quickly")
     void testKeywordSearchResponseTime() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 10)
+                SearchRequest.builder()
+                        .query("test")
+                        .topK(10)
+                        .build()
         );
 
         long startTime = System.currentTimeMillis();
@@ -375,7 +427,10 @@ class SearchControllerFtsTest {
     @DisplayName("FTS endpoints should support CORS")
     void testCORSHeaders() throws Exception {
         String request = objectMapper.writeValueAsString(
-                new SearchController.KeywordSearchRequest("test", 5)
+                SearchRequest.builder()
+                        .query("test")
+                        .topK(5)
+                        .build()
         );
 
         mockMvc.perform(post("/api/search/keywords")

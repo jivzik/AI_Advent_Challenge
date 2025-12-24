@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
  * Поддерживаемые форматы:
  * - PDF (Apache PDFBox)
  * - EPUB (Apache Tika)
+ * - FB2 (FictionBook 2.0 XML format)
  * - TXT, MD (прямое чтение)
  * - DOCX, DOC (Apache Tika)
  * - Код (.java, .py, .js, etc.)
@@ -51,6 +52,7 @@ public class DocumentParserService {
         return switch (extension) {
             case "pdf" -> extractFromPdf(file.getInputStream());
             case "epub" -> extractWithTika(file.getInputStream()); // Используем Tika для EPUB
+            case "fb2" -> extractFromFb2(file.getInputStream()); // FB2 format
             case "txt", "md", "markdown" -> extractFromText(file.getInputStream());
             case "java", "py", "js", "ts", "cpp", "c", "h", "go", "rs", "kt", "scala"
                     -> extractFromText(file.getInputStream());
@@ -73,6 +75,52 @@ public class DocumentParserService {
             log.info("✅ Extracted {} characters from PDF ({} pages)",
                     text.length(), document.getNumberOfPages());
             return text;
+        }
+    }
+
+    /**
+     * Извлечение текста из FB2 (FictionBook 2.0) файлов.
+     * FB2 это XML формат, который содержит текст внутри различных элементов.
+     * Мы используем SAX парсер для эффективного извлечения текста.
+     */
+    private String extractFromFb2(InputStream inputStream) throws IOException {
+        byte[] fb2Bytes = inputStream.readAllBytes();
+
+        try {
+            // Используем SAX парсер для безопасную обработку XML
+            javax.xml.parsers.SAXParserFactory factory = javax.xml.parsers.SAXParserFactory.newInstance();
+
+            // Отключаем внешние DTD и сущности для безопасность
+            try {
+                factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+                factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+                factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+                factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            } catch (Exception e) {
+                log.warn("Could not set all SAX parser features: {}", e.getMessage());
+            }
+
+            FB2TextExtractor extractor = new FB2TextExtractor();
+            factory.newSAXParser().parse(
+                    new java.io.ByteArrayInputStream(fb2Bytes),
+                    extractor
+            );
+
+            String text = extractor.getText();
+            log.info("✅ Extracted {} characters from FB2 file", text.length());
+            return text;
+        } catch (Exception e) {
+            log.warn("⚠️ FB2 SAX parsing failed: {}, trying Tika fallback", e.getMessage());
+
+            // Fallback: Nutze Tika als universellen Parser
+            try {
+                String text = tika.parseToString(new java.io.ByteArrayInputStream(fb2Bytes));
+                log.info("✅ Extracted {} characters from FB2 via Tika fallback", text.length());
+                return text;
+            } catch (TikaException tikaEx) {
+                log.error("❌ Both FB2 and Tika parsing failed");
+                throw new IOException("Failed to parse FB2 file: " + e.getMessage(), tikaEx);
+            }
         }
     }
 
@@ -107,6 +155,7 @@ public class DocumentParserService {
         return switch (extension) {
             case "pdf" -> "PDF";
             case "epub" -> "EPUB";
+            case "fb2" -> "FB2";
             case "txt" -> "TEXT";
             case "md", "markdown" -> "MARKDOWN";
             case "docx" -> "DOCX";

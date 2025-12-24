@@ -217,13 +217,13 @@ public class SearchResultRerankingService {
         List<MergedSearchResultDto> semanticRanking = results.stream()
                 .filter(r -> r.getSemanticScore() != null && r.getSemanticScore() > 0)
                 .sorted((a, b) -> b.getSemanticScore().compareTo(a.getSemanticScore()))
-                .collect(Collectors.toList());
+                .toList();
 
         // Keyword ranking (результаты отсортированы по keywordScore)
         List<MergedSearchResultDto> keywordRanking = results.stream()
                 .filter(r -> r.getKeywordScore() != null && r.getKeywordScore() > 0)
                 .sorted((a, b) -> b.getKeywordScore().compareTo(a.getKeywordScore()))
-                .collect(Collectors.toList());
+                .toList();
 
         log.debug("  semantic_ranking_size={}, keyword_ranking_size={}",
                 semanticRanking.size(), keywordRanking.size());

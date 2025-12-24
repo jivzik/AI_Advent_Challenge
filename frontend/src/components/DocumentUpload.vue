@@ -245,7 +245,7 @@ const handleFiles = async (files: FileList) => {
 
 const validateFile = (file: File): boolean => {
   const maxSize = 50 * 1024 * 1024; // 50 MB
-  const allowedTypes = ['pdf', 'txt', 'md', 'docx', 'epub'];
+  const allowedTypes = ['pdf', 'txt', 'md', 'docx', 'epub', 'fb2'];
 
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
 

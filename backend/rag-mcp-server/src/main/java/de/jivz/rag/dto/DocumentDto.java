@@ -1,6 +1,6 @@
 package de.jivz.rag.dto;
 
-import de.jivz.rag.entity.Document;
+import de.jivz.rag.repository.entity.Document;
 import lombok.*;
 
 import java.time.LocalDateTime;

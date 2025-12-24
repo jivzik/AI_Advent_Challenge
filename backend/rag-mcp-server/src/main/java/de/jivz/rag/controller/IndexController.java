@@ -1,7 +1,7 @@
 package de.jivz.rag.controller;
 
 import de.jivz.rag.dto.DocumentDto;
-import de.jivz.rag.service.RagService;
+import de.jivz.rag.service.RagFacade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -27,7 +27,7 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class IndexController {
 
-    private final RagService ragService;
+    private final RagFacade ragFacade;
 
     /**
      * Индексировать документ.
@@ -47,7 +47,7 @@ public class IndexController {
         }
 
         try {
-            DocumentDto doc = ragService.uploadDocument(file);
+            DocumentDto doc = ragFacade.uploadDocument(file);
             long processingTime = System.currentTimeMillis() - startTime;
 
             return ResponseEntity.ok(Map.of(
@@ -73,7 +73,7 @@ public class IndexController {
      */
     @GetMapping("/documents")
     public ResponseEntity<List<Map<String, Object>>> getIndexedDocuments() {
-        List<DocumentDto> docs = ragService.getAllDocuments();
+        List<DocumentDto> docs = ragFacade.getAllDocuments();
 
         List<Map<String, Object>> result = docs.stream()
                 .map(doc -> Map.<String, Object>of(
@@ -95,7 +95,7 @@ public class IndexController {
     public ResponseEntity<?> deleteDocumentByName(@PathVariable String name) {
         log.info("🗑️ Delete request for document: {}", name);
 
-        boolean deleted = ragService.deleteDocumentByName(name);
+        boolean deleted = ragFacade.deleteDocumentByName(name);
 
         if (deleted) {
             return ResponseEntity.ok(Map.of("status", "deleted"));

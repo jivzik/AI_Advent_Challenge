@@ -3,7 +3,7 @@ package de.jivz.rag.controller;
 import de.jivz.rag.dto.DocumentDto;
 import de.jivz.rag.dto.SearchRequest;
 import de.jivz.rag.dto.SearchResultDto;
-import de.jivz.rag.service.RagService;
+import de.jivz.rag.service.RagFacade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * REST контроллер для работы с документами.
@@ -24,7 +25,7 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class DocumentController {
 
-    private final RagService ragService;
+    private final RagFacade ragFacade;
 
     /**
      * Загрузка документа.
@@ -43,7 +44,7 @@ public class DocumentController {
         }
 
         try {
-            DocumentDto doc = ragService.uploadDocument(file);
+            DocumentDto doc = ragFacade.uploadDocument(file);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "document", doc,
@@ -61,12 +62,12 @@ public class DocumentController {
 
     /**
      * Получить список всех документов.
-     *
+     * <p>
      * GET /api/documents
      */
     @GetMapping
     public ResponseEntity<List<DocumentDto>> getAllDocuments() {
-        return ResponseEntity.ok(ragService.getAllDocuments());
+        return ResponseEntity.ok(ragFacade.getAllDocuments());
     }
 
     /**
@@ -76,11 +77,11 @@ public class DocumentController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<?> getDocument(@PathVariable Long id) {
-        DocumentDto doc = ragService.getDocument(id);
-        if (doc == null) {
+        Optional<DocumentDto> doc = ragFacade.getDocument(id);
+        if (doc.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(doc);
+        return ResponseEntity.ok(doc.get());
     }
 
     /**
@@ -90,7 +91,7 @@ public class DocumentController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteDocument(@PathVariable Long id) {
-        boolean deleted = ragService.deleteDocument(id);
+        boolean deleted = ragFacade.deleteDocument(id);
         if (deleted) {
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -114,7 +115,7 @@ public class DocumentController {
             return ResponseEntity.badRequest().build();
         }
 
-        List<SearchResultDto> results = ragService.search(
+        List<SearchResultDto> results = ragFacade.search(
                 request.getQuery(),
                 request.getTopK() != null ? request.getTopK() : 5,
                 request.getThreshold() != null ? request.getThreshold() : 0.5,
@@ -136,7 +137,7 @@ public class DocumentController {
             @RequestParam(defaultValue = "0.5") double threshold,
             @RequestParam(required = false) Long documentId) {
 
-        List<SearchResultDto> results = ragService.search(query, topK, threshold, documentId);
+        List<SearchResultDto> results = ragFacade.search(query, topK, threshold, documentId);
         return ResponseEntity.ok(results);
     }
 }

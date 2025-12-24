@@ -419,8 +419,9 @@ public class FinalSearchResultServiceTest {
 
         // Проверяем, что максимум 2 чанка с документа
         for (Long docId = 1L; docId <= 3L; docId++) {
+            final Long finalDocId = docId;
             long chunksPerDoc = results.stream()
-                    .filter(r -> r.getDocumentId().equals(docId))
+                    .filter(r -> r.getDocumentId().equals(finalDocId))
                     .count();
             assertTrue(chunksPerDoc <= 2,
                     "Should have max 2 chunks per document");

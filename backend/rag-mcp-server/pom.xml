@@ -88,6 +88,24 @@
             <version>${tika.version}</version>
         </dependency>
 
+        <!-- JAXB for XML Parsing (FB2 is XML-based) -->
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <version>4.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>4.0.5</version>
+        </dependency>
+
+        <!-- XPath for FB2 parsing -->
+        <dependency>
+            <groupId>javax.xml.parsers</groupId>
+            <artifactId>jaxp-api</artifactId>
+            <version>1.4.5</version>
+        </dependency>
 
         <!-- JSON Processing -->
         <dependency>

@@ -39,7 +39,10 @@ export interface SearchResult {
   documentName: string;
   chunkIndex: number;
   chunkText: string;
+  /** Semantic similarity score (0-1) */
   similarity: number;
+  /** Keyword relevance score (0-1) - используется для keyword search */
+  relevance?: number;
   tokensCount?: number;
   keywordScore?: number;
   metadata?: Record<string, unknown>;
@@ -192,7 +195,18 @@ class RagDocumentService {
       throw new Error('Search failed');
     }
 
-    return response.json();
+    const data = await response.json();
+
+    // Нормализуем результаты - бэкенд может возвращать relevance вместо similarity
+    if (data.results) {
+      data.results = data.results.map((r: any) => ({
+        ...r,
+        // Используем similarity если есть, иначе relevance
+        similarity: r.similarity ?? r.relevance ?? 0
+      }));
+    }
+
+    return data;
   }
 
   /**
@@ -229,6 +243,7 @@ class RagDocumentService {
       docx: '📘',
       doc: '📘',
       epub: '📖',
+      fb2: '📖',
       code: '💻',
       html: '🌐',
       xml: '📰',
