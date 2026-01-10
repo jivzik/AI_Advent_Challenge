@@ -21,6 +21,8 @@ import java.util.Map;
  * - OpenRouter unterstützt native Tool-Calls im API-Format
  * - Tools werden als Teil des Request mitgeschickt
  * - LLM antwortet mit strukturierten tool_calls im Response
+ *
+ * NEU: Unterstützt kontextabhängige Prompts via ContextualPromptStrategy
  */
 @Component
 @Slf4j
@@ -28,6 +30,7 @@ import java.util.Map;
 public class OpenRouterToolsPromptStrategy {
 
     private final ObjectMapper objectMapper;
+    private final ContextualPromptStrategy contextualPromptStrategy;
 
     /**
      * Konvertiert MCP Tools in OpenRouter-kompatible Tool-Definitionen.
@@ -67,13 +70,44 @@ public class OpenRouterToolsPromptStrategy {
     }
 
     /**
-     * Erstellt den System-Prompt für den Reminder-Workflow.
+     * Erstellt den System-Prompt für den Reminder-Workflow (Default).
      * Anders als bei Perplexity müssen die Tools hier nicht im Prompt beschrieben werden,
      * da sie nativ im API-Request übergeben werden.
      *
      * @return Der System-Prompt
      */
     public String buildSystemPrompt() {
+        return buildDefaultSystemPrompt();
+    }
+
+    /**
+     * NEU: Erstellt einen kontextabhängigen System-Prompt basierend auf der Benutzeranfrage.
+     *
+     * Erkennt automatisch den Anfrage-Typ (Docker, Tasks, etc.) und wählt
+     * den passenden spezialisierten Prompt.
+     *
+     * @param userMessage Die Nachricht des Benutzers zur Kontext-Erkennung
+     * @return Der passende System-Prompt
+     */
+    public String buildSystemPromptForMessage(String userMessage) {
+        ContextualPromptStrategy.PromptContext context = contextualPromptStrategy.detectContext(userMessage);
+        log.info("🎯 Detected context: {} for message: {}", context,
+            userMessage.length() > 50 ? userMessage.substring(0, 50) + "..." : userMessage);
+        return contextualPromptStrategy.getSystemPromptForContext(context);
+    }
+
+    /**
+     * Gibt den Prompt-Kontext für eine Nachricht zurück.
+     * Nützlich für Logging/Debugging.
+     */
+    public ContextualPromptStrategy.PromptContext getContextForMessage(String userMessage) {
+        return contextualPromptStrategy.detectContext(userMessage);
+    }
+
+    /**
+     * Default System-Prompt (bisheriges Verhalten für Tasks/Reminders)
+     */
+    private String buildDefaultSystemPrompt() {
         return """
             Du bist ein intelligenter Reminder-Assistent der periodische Zusammenfassungen erstellt.
             
@@ -152,4 +186,3 @@ public class OpenRouterToolsPromptStrategy {
             """.formatted(rawData);
     }
 }
-

@@ -1,114 +1,124 @@
 <template>
-  <div class="openrouter-chat-container">
-    <!-- Chat Section -->
-    <div class="chat-section">
-      <div class="chat-header">
-        <div class="header-content">
-          <div>
-            <h1>🔧 OpenRouter Tools Chat</h1>
-            <p>Powered by {{ currentModelLabel }}</p>
-          </div>
-          <div class="header-controls">
-            <button
-                @click="toggleSettings"
-                class="settings-button"
-                :class="{ active: showSettings }"
-                :disabled="isLoading"
-                title="Settings"
-            >
-              ⚙️
-            </button>
-            <button
-                v-if="messages.length > 0"
-                @click="clearConversation"
-                class="clear-button"
-                :disabled="isLoading"
-                title="Start new conversation"
-            >
-              🗑️ New Conversation
-            </button>
-          </div>
-        </div>
-      </div>
+  <div class="chat-container">
+    <!-- Conversation Sidebar -->
+    <OpenRouterSidebar
+        ref="sidebarRef"
+        :active-conversation-id="activeConversationId"
+        @select="handleSelectConversation"
+        @delete="handleDeleteConversation"
+        @new-conversation="handleNewConversation"
+    />
 
-      <!-- Collapsible Settings Panel -->
-      <div v-if="showSettings" class="settings-panel">
-        <!-- System Prompt -->
-        <div class="settings-row">
-          <div class="settings-label">
-            <span>🎭 System Prompt</span>
-            <span class="settings-hint">(Defines AI personality)</span>
-          </div>
-          <textarea
-              v-model="systemPrompt"
-              class="system-prompt-input"
-              placeholder="You are a helpful assistant with access to tools."
-              :disabled="isLoading"
-              rows="2"
-          ></textarea>
-        </div>
-
-        <!-- Temperature -->
-        <div class="settings-row">
-          <div class="settings-label">
-            <span>🌡️ Temperature</span>
-            <span class="temperature-value">{{ temperature.toFixed(1) }}</span>
-          </div>
-          <div class="temperature-description">
-            {{ getTemperatureDescription() }}
-          </div>
-          <input
-              type="range"
-              v-model.number="temperature"
-              min="0"
-              max="2"
-              step="0.1"
-              class="temperature-slider"
-              :disabled="isLoading"
-          />
-          <div class="temperature-range-labels">
-            <span>0 — Precise</span>
-            <span>1 — Balanced</span>
-            <span>2 — Creative</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="chat-messages" ref="messagesContainer">
-        <div
-            v-for="(msg, index) in messages"
-            :key="index"
-            :class="['message', msg.role]"
-        >
-          <div class="message-content">
-            <div class="message-role">{{ msg.role === 'user' ? 'You' : 'AI Agent' }}</div>
-            <div class="message-text markdown-content" v-html="renderMarkdown(msg.content)"></div>
-            <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
-          </div>
-        </div>
-        <div v-if="isLoading" class="message assistant loading">
-          <div class="message-content">
-            <div class="message-role">AI Agent</div>
-            <div class="typing-indicator">
-              <span></span>
-              <span></span>
-              <span></span>
+    <div class="chat-wrapper">
+      <!-- Chat Section -->
+      <div class="chat-section">
+        <div class="chat-header">
+          <div class="header-content">
+            <div>
+              <h1>🔧 OpenRouter Tools Chat</h1>
+              <p>Powered by {{ currentModelLabel }}</p>
+            </div>
+            <div class="header-controls">
+              <button
+                  @click="toggleSettings"
+                  class="settings-button"
+                  :class="{ active: showSettings }"
+                  :disabled="isLoading"
+                  title="Settings"
+              >
+                ⚙️
+              </button>
+              <button
+                  v-if="messages.length > 0"
+                  @click="clearConversation"
+                  class="clear-button"
+                  :disabled="isLoading"
+                  title="Start new conversation"
+              >
+                🗑️ New Conversation
+              </button>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="chat-input-container">
-        <div v-if="error" class="error-message">
-          {{ error }}
+        <!-- Collapsible Settings Panel -->
+        <div v-if="showSettings" class="settings-panel">
+          <!-- System Prompt -->
+          <div class="settings-row">
+            <div class="settings-label">
+              <span>🎭 System Prompt</span>
+              <span class="settings-hint">(Defines AI personality)</span>
+            </div>
+            <textarea
+                v-model="systemPrompt"
+                class="system-prompt-input"
+                placeholder="You are a helpful assistant with access to tools."
+                :disabled="isLoading"
+                rows="2"
+            ></textarea>
+          </div>
+
+          <!-- Temperature -->
+          <div class="settings-row">
+            <div class="settings-label">
+              <span>🌡️ Temperature</span>
+              <span class="temperature-value">{{ temperature.toFixed(1) }}</span>
+            </div>
+            <div class="temperature-description">
+              {{ getTemperatureDescription() }}
+            </div>
+            <input
+                type="range"
+                v-model.number="temperature"
+                min="0"
+                max="2"
+                step="0.1"
+                class="temperature-slider"
+                :disabled="isLoading"
+            />
+            <div class="temperature-range-labels">
+              <span>0 — Precise</span>
+              <span>1 — Balanced</span>
+              <span>2 — Creative</span>
+            </div>
+          </div>
         </div>
-        <form @submit.prevent="sendMessage" class="chat-input-form">
-          <input
-              v-model="currentMessage"
-              type="text"
-              placeholder="Type your message..."
-              :disabled="isLoading"
-              class="chat-input"
+
+        <div class="chat-messages" ref="messagesContainer">
+          <div
+              v-for="(msg, index) in messages"
+              :key="index"
+              :class="['message', msg.role]"
+          >
+            <div class="message-content">
+              <div class="message-role">{{ msg.role === 'user' ? 'You' : 'AI Agent' }}</div>
+              <div class="message-text markdown-content" v-html="renderMarkdown(msg.content)"></div>
+              <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
+            </div>
+          </div>
+          <div v-if="isLoading" class="message assistant loading">
+            <div class="message-content">
+              <div class="message-role">AI Agent</div>
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-container">
+          <div v-if="error" class="error-message">
+            {{ error }}
+          </div>
+          <form @submit.prevent="sendMessage" class="chat-input-form">
+            <input
+                v-model="currentMessage"
+                type="text"
+                placeholder="Type your message..."
+                :disabled="isLoading"
+                class="chat-input"
           />
           <!-- Model Selector Dropdown -->
           <div class="model-selector">
@@ -142,6 +152,7 @@
             {{ isLoading ? 'Sending...' : 'Send' }}
           </button>
         </form>
+        </div>
       </div>
     </div>
   </div>
@@ -149,6 +160,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from 'vue';
+import OpenRouterSidebar from './OpenRouterSidebar.vue';
 import { OpenRouterChatService } from '../services/openRouterChatService';
 import { marked } from 'marked';
 import type { Message } from "../types/types";
@@ -162,6 +174,10 @@ const systemPrompt = ref('You are a helpful assistant with access to tools.');
 const temperature = ref(0.7);
 const showModelDropdown = ref(false);
 const showSettings = ref(false);
+const sidebarRef = ref<InstanceType<typeof OpenRouterSidebar> | null>(null);
+
+// Active conversation tracking
+const activeConversationId = ref<string | null>(null);
 
 // Available OpenRouter models
 const availableModels = [
@@ -257,6 +273,11 @@ const sendMessage = async () => {
   currentMessage.value = '';
   error.value = '';
 
+  // If no active conversation, create new one
+  if (!activeConversationId.value) {
+    activeConversationId.value = conversationId.value;
+  }
+
   // Add user message to UI
   messages.value.push({
     role: 'user',
@@ -284,6 +305,9 @@ const sendMessage = async () => {
     });
 
     scrollToBottom();
+
+    // Refresh sidebar to show updated conversation
+    sidebarRef.value?.refresh();
   } catch (err: any) {
     error.value = err.message || 'An error occurred';
     console.error('Error sending message:', err);
@@ -300,6 +324,38 @@ const clearConversation = () => {
   messages.value = [];
   error.value = '';
   conversationId.value = 'openrouter-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  activeConversationId.value = conversationId.value;
+  console.log('✅ New conversation started. ID:', conversationId.value);
+};
+
+// Sidebar event handlers
+const handleSelectConversation = async (selectedConversationId: string) => {
+  activeConversationId.value = selectedConversationId;
+  conversationId.value = selectedConversationId;
+
+  try {
+    // Load conversation history
+    const history = await OpenRouterChatService.getConversationHistory(selectedConversationId);
+    messages.value = history;
+    scrollToBottom();
+    console.log(`✅ Loaded conversation ${selectedConversationId} with ${history.length} messages`);
+  } catch (err) {
+    console.error('Failed to load conversation history:', err);
+    error.value = 'Failed to load conversation history';
+  }
+};
+
+const handleDeleteConversation = (deletedConversationId: string) => {
+  if (activeConversationId.value === deletedConversationId) {
+    handleNewConversation();
+  }
+};
+
+const handleNewConversation = () => {
+  messages.value = [];
+  error.value = '';
+  conversationId.value = 'openrouter-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  activeConversationId.value = conversationId.value;
   console.log('✅ New conversation started. ID:', conversationId.value);
 };
 

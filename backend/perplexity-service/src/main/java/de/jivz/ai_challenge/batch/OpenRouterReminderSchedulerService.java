@@ -113,6 +113,24 @@ public class OpenRouterReminderSchedulerService {
      */
     @Transactional
     public ReminderSummary executeReminderWorkflow(String userId) {
+        return executeReminderWorkflow(userId, null);
+    }
+
+    /**
+     * Manueller Trigger mit benutzerdefinierter Anfrage.
+     * Verwendet kontextabhängige Prompts basierend auf der userMessage.
+     *
+     * Beispiele:
+     * - "Docker Status" → verwendet Docker DevOps-Experten Prompt
+     * - "Meine Aufgaben" → verwendet Task-Manager Prompt
+     * - "Summarize" → verwendet Zusammenfassungs-Prompt
+     *
+     * @param userId Benutzer-ID für die Zusammenfassung
+     * @param userMessage Benutzernachricht (null = Default-Prompt)
+     * @return Die erstellte Zusammenfassung
+     */
+    @Transactional
+    public ReminderSummary executeReminderWorkflow(String userId, String userMessage) {
         log.info("🚀 Executing OpenRouter reminder workflow for user: {}", userId);
 
         // 1. Aktuelle MCP Tools vom Backend holen
@@ -123,17 +141,20 @@ public class OpenRouterReminderSchedulerService {
         List<OpenRouterRequest.Tool> openRouterTools = promptStrategy.convertToOpenRouterTools(mcpTools);
         log.debug("🔧 Converted to {} OpenRouter tools", openRouterTools.size());
 
-        // 3. System-Prompt erstellen
-        String systemPrompt = promptStrategy.buildSystemPrompt();
-        log.debug("📝 Built system prompt ({} chars)", systemPrompt.length());
+        // 3. System-Prompt erstellen - NEU: kontextabhängig!
+        String effectiveUserMessage = userMessage != null ? userMessage :
+            "Erstelle eine Zusammenfassung meiner aktuellen Aufgaben. " +
+            "Identifiziere wichtige und überfällige Aufgaben. " +
+            "Nutze die verfügbaren Tools um die Daten abzurufen.";
+
+        String systemPrompt = promptStrategy.buildSystemPromptForMessage(effectiveUserMessage);
+        log.debug("📝 Built contextual system prompt ({} chars) for context: {}",
+            systemPrompt.length(), promptStrategy.getContextForMessage(effectiveUserMessage));
 
         // 4. Messages aufbauen
         List<Message> messages = new ArrayList<>();
         messages.add(new Message("system", systemPrompt));
-        messages.add(new Message("user",
-            "Erstelle eine Zusammenfassung meiner aktuellen Aufgaben. " +
-            "Identifiziere wichtige und überfällige Aufgaben. " +
-            "Nutze die verfügbaren Tools um die Daten abzurufen."));
+        messages.add(new Message("user", effectiveUserMessage));
 
         // 5. Tool-Loop ausführen mit nativen Tool-Calls
         ToolLoopResult result = executeToolLoop(messages, openRouterTools);

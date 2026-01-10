@@ -1,517 +1,504 @@
 // ==============================================
 // OPENROUTER CHAT - Стили для OpenRouterChat.vue
-// Упрощённый чат без MetricsCard и ConversationSidebar
 // ==============================================
 
 @use 'variables' as *;
 @use 'mixins' as *;
 
+// Sidebar Variables
+$sidebar-width-base: 280px;
+$sidebar-collapsed-width-base: 50px;
+
 // ==============================================
-// OpenRouter Chat Container (simplified layout)
+// Chat Container & Wrapper
 // ==============================================
-.openrouter-chat-container {
+.chat-container {
   display: flex;
   flex-direction: row;
+  gap: $spacing-lg;
   @include card;
   height: $chat-height;
-  width: 900px;
-  min-width: 600px;
-  max-width: 1000px;
+  width: calc(#{$chat-width} + #{$sidebar-width-base} + #{$spacing-lg});
+  min-width: calc(#{$chat-min-width} + #{$sidebar-collapsed-width-base});
+  max-width: calc(#{$chat-max-width} + #{$sidebar-width-base} + #{$spacing-lg});
   min-height: $chat-min-height;
   max-height: $chat-max-height;
   margin: auto;
   overflow: hidden;
   padding: $spacing-lg;
+}
 
-  .chat-section {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    background: $bg-white;
-    border-radius: $radius-lg;
-    box-shadow: $shadow-sm;
-    overflow: hidden;
-  }
+.chat-wrapper {
+  display: flex;
+  gap: $spacing-lg;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
 
-  // ==============================================
-  // Chat Header
-  // ==============================================
-  .chat-header {
-    padding: $spacing-lg;
-    border-bottom: 1px solid $border-light;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: $text-white;
-  }
+.chat-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: $bg-white;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+}
 
-  .header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: $spacing-lg;
+// ==============================================
+// Chat Header
+// ==============================================
+.chat-header {
+  flex-shrink: 0;
+  padding: $spacing-lg;
+  border-bottom: 1px solid $border-light;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: $text-white;
+}
 
-    > div:first-child {
-      h1 {
-        margin: 0;
-        font-size: $font-size-xl;
-        color: $text-white;
-      }
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: $spacing-lg;
 
-      p {
-        margin: $spacing-sm 0 0 0;
-        font-size: $font-size-sm;
-        color: rgba($text-white, 0.9);
-      }
-    }
-  }
-
-  .header-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: $spacing-sm;
-    align-items: center;
-  }
-
-  // Unified header button styles
-  .settings-button,
-  .clear-button {
-    @include button-secondary;
-    background: rgba(white, 0.2);
-    border: 1px solid rgba(white, 0.3);
-    color: white;
-    padding: $spacing-sm $spacing-md;
-    font-size: $font-size-sm;
-    border-radius: $radius-md;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    transition: all 0.2s;
-
-    &:hover:not(:disabled) {
-      background: rgba(white, 0.3);
-      border-color: rgba(white, 0.5);
+  > div:first-child {
+    h1 {
+      margin: 0;
+      font-size: $font-size-xl;
+      color: $text-white;
     }
 
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    p {
+      margin: $spacing-sm 0 0 0;
+      font-size: $font-size-sm;
+      color: rgba($text-white, 0.9);
     }
   }
+}
 
-  .settings-button {
-    &.active {
-      background: rgba(white, 0.4);
-      border-color: rgba(white, 0.6);
-    }
+.header-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  align-items: center;
+}
+
+.settings-button,
+.clear-button {
+  @include button-secondary;
+  background: rgba(white, 0.2);
+  border: 1px solid rgba(white, 0.3);
+  color: white;
+  padding: $spacing-sm $spacing-md;
+  font-size: $font-size-sm;
+  border-radius: $radius-md;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: rgba(white, 0.3);
+    border-color: rgba(white, 0.5);
   }
 
-  // ==============================================
-  // Collapsible Settings Panel
-  // ==============================================
-  .settings-panel {
-    padding: $spacing-md $spacing-lg;
-    background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
-    border-bottom: 1px solid $border-light;
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-md;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
-  .settings-row {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-xs;
+  &.active {
+    background: rgba(white, 0.4);
+    border-color: rgba(white, 0.6);
+  }
+}
+
+// ==============================================
+// Settings Panel
+// ==============================================
+.settings-panel {
+  flex-shrink: 0;
+  padding: $spacing-md $spacing-lg;
+  background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+  border-bottom: 1px solid $border-light;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.settings-label {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  font-weight: 600;
+  color: $text-dark;
+  font-size: $font-size-sm;
+}
+
+.settings-hint {
+  font-weight: 400;
+  font-size: $font-size-xs;
+  color: $text-light;
+}
+
+.system-prompt-input {
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  border: 1px solid $border-light;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 40px;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
   }
 
-  .settings-label {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-    font-weight: 600;
-    color: $text-dark;
-    font-size: $font-size-sm;
+  &:disabled {
+    background: $bg-light;
+    cursor: not-allowed;
   }
+}
 
-  .settings-hint {
-    font-weight: 400;
-    font-size: $font-size-xs;
-    color: $text-light;
-  }
+// ==============================================
+// Temperature Control
+// ==============================================
+.temperature-value {
+  font-weight: 700;
+  color: #e67e22;
+  font-size: $font-size-md;
+  background: rgba(#e67e22, 0.1);
+  padding: 2px 8px;
+  border-radius: $radius-sm;
+}
 
-  // ==============================================
-  // System Prompt (inside settings panel)
-  // ==============================================
+.temperature-description {
+  font-size: $font-size-xs;
+  color: $text-muted;
+  margin-bottom: $spacing-sm;
+}
 
-  .system-prompt-input {
-    width: 100%;
-    padding: $spacing-sm $spacing-md;
-    border: 1px solid $border-light;
-    border-radius: $radius-md;
-    font-size: $font-size-sm;
-    font-family: inherit;
-    resize: vertical;
-    min-height: 40px;
-    background: white;
-    transition: border-color 0.2s, box-shadow 0.2s;
+.temperature-slider {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to right, #3498db, #f39c12, #e74c3c);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
 
-    &:focus {
-      outline: none;
-      border-color: $primary-color;
-      box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
-    }
-
-    &:disabled {
-      background: $bg-light;
-      cursor: not-allowed;
-    }
-  }
-
-  // ==============================================
-  // Temperature (inside settings panel)
-  // ==============================================
-  .temperature-section {
-    padding: $spacing-md $spacing-lg;
-    background: linear-gradient(135deg, #fff8f0 0%, #fff5eb 100%);
-    border-bottom: 1px solid $border-light;
-  }
-
-  .temperature-header {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-    margin-bottom: $spacing-xs;
-  }
-
-  .temperature-label {
-    font-weight: 600;
-    color: $text-dark;
-    font-size: $font-size-sm;
-  }
-
-  .temperature-value {
-    font-weight: 700;
-    color: #e67e22;
-    font-size: $font-size-md;
-    background: rgba(#e67e22, 0.1);
-    padding: 2px 8px;
-    border-radius: $radius-sm;
-  }
-
-  .temperature-description {
-    font-size: $font-size-xs;
-    color: $text-muted;
-    margin-bottom: $spacing-sm;
-  }
-
-  .temperature-slider {
-    width: 100%;
-    height: 6px;
+  &::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    background: linear-gradient(to right, #3498db, #f39c12, #e74c3c);
-    border-radius: 3px;
-    outline: none;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border: 2px solid #e67e22;
+    border-radius: 50%;
     cursor: pointer;
-
-    &::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      background: white;
-      border: 2px solid #e67e22;
-      border-radius: 50%;
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      transition: transform 0.2s;
-
-      &:hover {
-        transform: scale(1.1);
-      }
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
-
-  .temperature-range-labels {
-    display: flex;
-    justify-content: space-between;
-    margin-top: $spacing-xs;
-    font-size: $font-size-xs;
-    color: $text-light;
-  }
-
-  // ==============================================
-  // Chat Messages
-  // ==============================================
-  .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: $spacing-lg;
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-md;
-    background: $bg-light;
-
-    &::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: $text-light;
-      border-radius: 4px;
-
-      &:hover {
-        background: $text-muted;
-      }
-    }
-  }
-
-  .message {
-    display: flex;
-
-
-    &.user {
-      align-self: flex-end;
-      max-width: 100%;
-
-      .message-content {
-        background: $primary-gradient;
-        color: $text-white;
-        border-radius: $radius-lg $radius-lg 4px $radius-lg;
-        max-width: 100%;
-      }
-
-      .message-role {
-        color: rgba($text-white, 0.8);
-      }
-
-      .message-time {
-        color: rgba($text-white, 0.7);
-      }
-    }
-
-    &.assistant {
-      align-self: flex-start;
-
-      .message-content {
-        background: $bg-white;
-        color: $text-dark;
-        border-radius: $radius-lg $radius-lg $radius-lg 4px;
-        box-shadow: $shadow-sm;
-      }
-    }
-  }
-
-  .message-content {
-    padding: $spacing-md $spacing-lg;
-  }
-
-  .message-role {
-    font-size: $font-size-xs;
-    font-weight: 600;
-    margin-bottom: $spacing-xs;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: $text-light;
-  }
-
-  .message-text {
-    font-size: $font-size-md;
-    line-height: 1.5;
-    word-wrap: break-word;
-  }
-
-  .message-time {
-    font-size: $font-size-xs;
-    margin-top: $spacing-sm;
-    color: $text-light;
-    text-align: right;
-  }
-
-  // Typing indicator
-  .typing-indicator {
-    display: flex;
-    gap: 4px;
-    padding: $spacing-sm 0;
-
-    span {
-      width: 8px;
-      height: 8px;
-      background: $text-light;
-      border-radius: 50%;
-      animation: openrouter-typing 1.4s infinite ease-in-out;
-
-      &:nth-child(1) { animation-delay: 0s; }
-      &:nth-child(2) { animation-delay: 0.2s; }
-      &:nth-child(3) { animation-delay: 0.4s; }
-    }
-  }
-
-  @keyframes openrouter-typing {
-    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-    30% { transform: translateY(-4px); opacity: 1; }
-  }
-
-  // ==============================================
-  // Chat Input
-  // ==============================================
-  .chat-input-container {
-    padding: $spacing-lg;
-    border-top: 1px solid $border-light;
-    background: $bg-white;
-  }
-
-  .error-message {
-    background: #fee;
-    color: #c00;
-    padding: $spacing-sm $spacing-md;
-    border-radius: $radius-md;
-    margin-bottom: $spacing-md;
-    font-size: $font-size-sm;
-  }
-
-  .chat-input-form {
-    display: flex;
-    gap: $spacing-md;
-    align-items: center;
-  }
-
-  .chat-input {
-    flex: 1;
-    padding: $spacing-md $spacing-lg;
-    border: 1px solid $border-light;
-    border-radius: $radius-lg;
-    font-size: $font-size-md;
-    transition: border-color 0.2s, box-shadow 0.2s;
-
-    &:focus {
-      outline: none;
-      border-color: $primary-color;
-      box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
-    }
-
-    &:disabled {
-      background: $bg-light;
-      cursor: not-allowed;
-    }
-  }
-
-  .model-selector {
-    position: relative;
-  }
-
-  .model-button {
-    @include button-primary;
-    padding: $spacing-md;
-    font-size: 20px;
-    min-width: 48px;
-    border-radius: $radius-md;
-  }
-
-  .model-dropdown {
-    position: absolute;
-    bottom: 100%;
-    right: 0;
-    margin-bottom: $spacing-sm;
-    background: $bg-white;
-    border: 1px solid $border-light;
-    border-radius: $radius-md;
-    box-shadow: $shadow-lg;
-    min-width: 200px;
-    z-index: 100;
-    overflow: hidden;
-  }
-
-  .model-option {
-    display: block;
-    width: 100%;
-    padding: $spacing-sm $spacing-md;
-    text-align: left;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: $font-size-sm;
-    transition: background-color 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s;
 
     &:hover {
-      background: $bg-light;
-    }
-
-    &.active {
-      background: rgba($primary-color, 0.1);
-      color: $primary-color;
-      font-weight: 600;
+      transform: scale(1.1);
     }
   }
 
-  .send-button {
-    @include button-primary;
-    padding: $spacing-md $spacing-xl;
-    font-size: $font-size-md;
-    border-radius: $radius-lg;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
 
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+.temperature-range-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: $spacing-xs;
+  font-size: $font-size-xs;
+  color: $text-light;
+}
+
+// ==============================================
+// Chat Messages
+// ==============================================
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-lg;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  background: $bg-light;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $text-light;
+    border-radius: 4px;
+
+    &:hover {
+      background: $text-muted;
+    }
+  }
+}
+
+.message {
+  display: flex;
+
+  &.user {
+    align-self: flex-end;
+    max-width: 100%;
+
+    .message-content {
+      background: $primary-gradient;
+      color: $text-white;
+      border-radius: $radius-lg $radius-lg 4px $radius-lg;
+      max-width: 100%;
+    }
+
+    .message-role {
+      color: rgba($text-white, 0.8);
+    }
+
+    .message-time {
+      color: rgba($text-white, 0.7);
     }
   }
 
-  // ==============================================
-  // Markdown Content Styles
-  // ==============================================
-  .markdown-content {
-    p {
-      margin: 0 0 $spacing-sm 0;
-      &:last-child { margin-bottom: 0; }
-    }
+  &.assistant {
+    align-self: flex-start;
 
-    ul, ol {
-      margin: $spacing-sm 0;
-      padding-left: $spacing-lg;
+    .message-content {
+      background: $bg-white;
+      color: $text-dark;
+      border-radius: $radius-lg $radius-lg $radius-lg 4px;
+      box-shadow: $shadow-sm;
     }
+  }
+}
+
+.message-content {
+  padding: $spacing-md $spacing-lg;
+}
+
+.message-role {
+  font-size: $font-size-xs;
+  font-weight: 600;
+  margin-bottom: $spacing-xs;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: $text-light;
+}
+
+.message-text {
+  font-size: $font-size-md;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.message-time {
+  font-size: $font-size-xs;
+  margin-top: $spacing-sm;
+  color: $text-light;
+  text-align: right;
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: $spacing-sm 0;
+
+  span {
+    width: 8px;
+    height: 8px;
+    background: $text-light;
+    border-radius: 50%;
+    animation: openrouter-typing 1.4s infinite ease-in-out;
+
+    &:nth-child(1) { animation-delay: 0s; }
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.4s; }
+  }
+}
+
+@keyframes openrouter-typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+// ==============================================
+// Chat Input
+// ==============================================
+.chat-input-container {
+  flex-shrink: 0;
+  padding: $spacing-lg;
+  border-top: 1px solid $border-light;
+  background: $bg-white;
+}
+
+.error-message {
+  background: #fee;
+  color: #c00;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-md;
+  margin-bottom: $spacing-md;
+  font-size: $font-size-sm;
+}
+
+.chat-input-form {
+  display: flex;
+  gap: $spacing-md;
+  align-items: center;
+}
+
+.chat-input {
+  flex: 1;
+  padding: $spacing-md $spacing-lg;
+  border: 1px solid $border-light;
+  border-radius: $radius-lg;
+  font-size: $font-size-md;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+  }
+
+  &:disabled {
+    background: $bg-light;
+    cursor: not-allowed;
+  }
+}
+
+.model-selector {
+  position: relative;
+}
+
+.model-button {
+  @include button-primary;
+  padding: $spacing-md;
+  font-size: 20px;
+  min-width: 48px;
+  border-radius: $radius-md;
+}
+
+.model-dropdown {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: $spacing-sm;
+  background: $bg-white;
+  border: 1px solid $border-light;
+  border-radius: $radius-md;
+  box-shadow: $shadow-lg;
+  min-width: 200px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.model-option {
+  display: block;
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: $font-size-sm;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: $bg-light;
+  }
+
+  &.active {
+    background: rgba($primary-color, 0.1);
+    color: $primary-color;
+    font-weight: 600;
+  }
+}
+
+.send-button {
+  @include button-primary;
+  padding: $spacing-md $spacing-xl;
+  font-size: $font-size-md;
+  border-radius: $radius-lg;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// ==============================================
+// Markdown Content Styles
+// ==============================================
+.markdown-content {
+  p {
+    margin: 0 0 $spacing-sm 0;
+    &:last-child { margin-bottom: 0; }
+  }
+
+  ul, ol {
+    margin: $spacing-sm 0;
+    padding-left: $spacing-lg;
+  }
+
+  code {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9em;
+  }
+
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: $spacing-md;
+    border-radius: $radius-md;
+    overflow-x: auto;
+    margin: $spacing-sm 0;
 
     code {
-      background: rgba(0, 0, 0, 0.1);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: 'Fira Code', monospace;
-      font-size: 0.9em;
+      background: none;
+      padding: 0;
+      color: inherit;
     }
+  }
 
-    pre {
-      background: #1e1e1e;
-      color: #d4d4d4;
-      padding: $spacing-md;
-      border-radius: $radius-md;
-      overflow-x: auto;
-      margin: $spacing-sm 0;
+  a {
+    color: #667eea;
+    text-decoration: underline;
+  }
 
-      code {
-        background: none;
-        padding: 0;
-        color: inherit;
-      }
-    }
-
-    a {
-      color: #667eea;
-      text-decoration: underline;
-    }
-
-    blockquote {
-      border-left: 3px solid #667eea;
-      margin: $spacing-sm 0;
-      padding-left: $spacing-md;
-      color: $text-muted;
-    }
+  blockquote {
+    border-left: 3px solid #667eea;
+    margin: $spacing-sm 0;
+    padding-left: $spacing-md;
+    color: $text-muted;
   }
 }
 

@@ -181,36 +181,67 @@ export class ChatService {
    * Get list of all conversations
    */
   static async getConversations(): Promise<GetConversationsResponse> {
-    const response = await fetch(`${MEMORY_API_BASE_URL}/conversations`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch conversations');
+    try {
+      const response = await fetch(`${MEMORY_API_BASE_URL}/conversations`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch conversations: ${response.status}`);
+        // Return empty conversations instead of throwing
+        return {
+          totalConversations: 0,
+          conversations: [],
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      // Return empty conversations on error instead of throwing
+      return {
+        totalConversations: 0,
+        conversations: [],
+        timestamp: new Date().toISOString()
+      };
     }
-    return response.json();
   }
 
   /**
    * Get full message history for a conversation
    */
   static async getConversationHistory(conversationId: string): Promise<Message[]> {
-    const response = await fetch(`${MEMORY_API_BASE_URL}/conversation/${conversationId}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch conversation history');
+    try {
+      const response = await fetch(`${MEMORY_API_BASE_URL}/conversation/${conversationId}`);
+      if (!response.ok) {
+        console.warn(`Failed to fetch conversation history: ${response.status}`);
+        return [];
+      }
+      const data = await response.json();
+      return data.messages || [];
+    } catch (error) {
+      console.error('Error fetching conversation history:', error);
+      return [];
     }
-    const data = await response.json();
-
-    // Backend returns: { messageCount, conversationId, messages: [...] }
-    return data.messages || [];
   }
 
   /**
    * Delete a conversation from memory
    */
   static async deleteConversation(conversationId: string): Promise<void> {
-    const response = await fetch(`${MEMORY_API_BASE_URL}/conversation/${conversationId}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      throw new Error('Failed to delete conversation');
+    try {
+      const response = await fetch(`${MEMORY_API_BASE_URL}/conversation/${conversationId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        console.warn(`Failed to delete conversation: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
     }
   }
 }

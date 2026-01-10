@@ -6,6 +6,7 @@ import de.jivz.ai_challenge.openrouterservice.dto.*;
 import de.jivz.ai_challenge.openrouterservice.mcp.MCPFactory;
 import de.jivz.ai_challenge.openrouterservice.mcp.model.MCPToolResult;
 import de.jivz.ai_challenge.openrouterservice.mcp.model.ToolDefinition;
+import de.jivz.ai_challenge.openrouterservice.persistence.MemoryRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
@@ -46,6 +47,7 @@ public class ChatWithToolsService {
     private final ObjectMapper objectMapper;
     private final de.jivz.ai_challenge.openrouterservice.config.OpenRouterProperties properties;
     private final ConversationHistoryService historyService;
+    private final MemoryRepository memoryRepository;
 
     public ChatWithToolsService(
             @Qualifier("openRouterWebClient") WebClient webClient,
@@ -53,13 +55,15 @@ public class ChatWithToolsService {
             PromptLoaderService promptLoader,
             ObjectMapper objectMapper,
             de.jivz.ai_challenge.openrouterservice.config.OpenRouterProperties properties,
-            ConversationHistoryService historyService) {
+            ConversationHistoryService historyService,
+            MemoryRepository memoryRepository) {
         this.webClient = webClient;
         this.mcpFactory = mcpFactory;
         this.promptLoader = promptLoader;
         this.objectMapper = objectMapper;
         this.properties = properties;
         this.historyService = historyService;
+        this.memoryRepository = memoryRepository;
         log.info("ChatWithToolsService initialized");
     }
 
@@ -110,6 +114,7 @@ public class ChatWithToolsService {
      */
     private String executeToolLoop(List<Message> messages, Double temperature) {
         int iteration = 0;
+        Set<String> sources = new LinkedHashSet<>();  // ← Отслеживаем источники
 
         while (iteration < MAX_TOOL_ITERATIONS) {
             iteration++;
@@ -130,7 +135,14 @@ public class ChatWithToolsService {
             // ====== SCHRITT 3: Step prüfen ======
             if (STEP_FINAL.equals(parsed.getStep())) {
                 log.info("✅ Got final answer after {} iteration(s)", iteration);
-                return parsed.getAnswer() != null ? parsed.getAnswer() : "";
+                String finalAnswer = parsed.getAnswer() != null ? parsed.getAnswer() : "";
+
+                // ← Добавляем источники к финальному ответу если они есть
+                if (!sources.isEmpty()) {
+                    finalAnswer = appendSources(finalAnswer, sources);
+                }
+
+                return finalAnswer;
             }
 
             if (STEP_TOOL.equals(parsed.getStep()) && parsed.getToolCalls() != null && !parsed.getToolCalls().isEmpty()) {
@@ -145,6 +157,12 @@ public class ChatWithToolsService {
 
                 for (ToolResponse.ToolCall toolCall : parsed.getToolCalls()) {
                     String toolResult = executeMcpTool(toolCall);
+
+                    // ← Извлекаем источники если это RAG tool
+                    if ("rag:search_documents".equals(toolCall.getName())) {
+                        extractSourcesFromRagResult(toolResult, sources);
+                    }
+
                     allToolResults.append(String.format("TOOL_RESULT %s:\n%s\n\n",
                             toolCall.getName(), toolResult));
                     log.info("📨 Executed tool: {}", toolCall.getName());
@@ -154,11 +172,18 @@ public class ChatWithToolsService {
                 messages.add(new Message("user", allToolResults.toString().trim()));
                 log.info("📨 Added tool results as user message");
 
-                // Weiter im Loop - erneut an OpenRouter
+                // Weiter im Loop - erneут an OpenRouter
             } else {
                 // Unbekannter Step oder leere tool_calls
                 log.warn("⚠️ Unknown step or empty tool_calls, treating as final");
-                return parsed.getAnswer() != null ? parsed.getAnswer() : openRouterResponse;
+                String finalAnswer = parsed.getAnswer() != null ? parsed.getAnswer() : openRouterResponse;
+
+                // ← Добавляем источники если они есть
+                if (!sources.isEmpty()) {
+                    finalAnswer = appendSources(finalAnswer, sources);
+                }
+
+                return finalAnswer;
             }
         }
 
@@ -446,9 +471,73 @@ public class ChatWithToolsService {
             return;
         }
 
-        historyService.addMessage(conversationId, "user", userMessage);
-        historyService.addMessage(conversationId, "assistant", assistantReply);
+        // Speichere user-Nachricht
+        historyService.addMessage(conversationId, "user", userMessage, null);
+
+        // Speichere assistant-Antwort mit Model-Info
+        historyService.addMessage(conversationId, "assistant", assistantReply, properties.getDefaultModel());
 
         log.info("💾 Saved conversation to history for conversationId: {}", conversationId);
+    }
+
+    /**
+     * Получает все уникальные ID конверсаций из БД
+     *
+     * @return список всех conversation_id которые есть в memory_entries таблице
+     */
+    public List<String> getAllConversationIds() {
+        try {
+            return memoryRepository.findAllConversationIds();
+        } catch (Exception e) {
+            log.error("Error retrieving all conversation IDs: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Извлекает имена документов из RAG результата (JSON)
+     * Ищет поле "documentName" в каждом результате
+     */
+    private void extractSourcesFromRagResult(String toolResult, Set<String> sources) {
+        try {
+            // RAG результат - это JSON строка, нужно распарсить
+            var results = objectMapper.readTree(toolResult);
+
+            if (results.isArray()) {
+                for (var result : results) {
+                    // Ищем поле documentName
+                    String docName = result.path("documentName").asText();
+                    if (docName != null && !docName.isBlank() && !docName.equals("null")) {
+                        sources.add(docName);
+                        log.info("📚 Found document source: {}", docName);
+                    }
+                }
+            }
+
+            log.info("📚 Extracted {} unique sources", sources.size());
+        } catch (Exception e) {
+            log.warn("Could not extract sources from RAG result: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Добавляет красиво отформатированный список источников в конец ответа
+     */
+    private String appendSources(String answer, Set<String> sources) {
+        if (sources.isEmpty()) {
+            return answer;
+        }
+
+        StringBuilder sourcesSection = new StringBuilder();
+        sourcesSection.append("\n\n---\n\n");
+        sourcesSection.append("**📚 Источники информации:**\n");
+
+        int index = 1;
+        for (String source : sources) {
+            sourcesSection.append(String.format("%d. `%s`\n", index++, source));
+        }
+
+        log.info("📚 Appended {} sources to answer", sources.size());
+        return answer + sourcesSection.toString();
     }
 }
