@@ -20,6 +20,6 @@ public class MCPToolResult {
     private String error;
     private String toolName;
     private Map<String, Object> metadata;
-    private long timestamp;
+    private Long timestamp;
 }
 
