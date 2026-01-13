@@ -12,6 +12,7 @@
 | **Temperature Control** | AI creativity adjustment (0.0-2.0) | [Quick Start](docs/quickstarts/TEMPERATURE_QUICKSTART.md) |
 | **Nutritionist Agent** | Family meal planning with KBJU | [Quick Start](docs/quickstarts/NUTRITIONIST_QUICKSTART.md) |
 | **Meta-Prompting** | Universal AI that adapts to any goal | [Quick Start](docs/quickstarts/META_PROMPTING_QUICKSTART.md) |
+| **Compare Branches** | Git branch comparison tool | [Quick Start](docs/quickstarts/COMPARE_BRANCHES_QUICKSTART.md) |
 
 ## 🎯 Core Features
 
@@ -53,6 +54,14 @@
 | **Nutritionist Agent** | ✅ Active | Family meal planning with KBJU calculations | [Feature Guide](docs/features/NUTRITIONIST_AGENT_FEATURE.md) |
 | **Auto-Schema Generation** | ✅ Active | Dynamic JSON structure generation | [Feature Guide](docs/features/AUTO_SCHEMA_FEATURE.md) |
 | **JSON Mode** | ✅ Active | Structured output with schema validation | [Feature Guide](docs/features/JSON_MODE_FEATURE.md) |
+
+### Developer Tools
+
+| Feature | Status | Description | Documentation |
+|---------|--------|-------------|---------------|
+| **Git Tools Provider** | ✅ Active | 6 Git & file system tools for LLM | [Feature Guide](docs/features/GIT_TOOLS_PROVIDER_FEATURE.md) |
+| **Compare Branches** | ✅ Active | Compare Git branches and show commit differences | [Feature Guide](docs/features/COMPARE_BRANCHES_FEATURE.md) |
+| **Developer Assistant** | ✅ Active | AI-powered code analysis and help | [Implementation](DEVELOPER_ASSISTANT_IMPLEMENTATION.md) |
 
 ### Conversation Management
 

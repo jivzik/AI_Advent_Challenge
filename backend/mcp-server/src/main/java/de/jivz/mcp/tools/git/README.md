@@ -2,11 +2,116 @@
 
 ## Übersicht
 
-Der GitToolProvider stellt 5 Werkzeuge für die Arbeit mit Git-Repositories und Projektdateien bereit:
+Der GitToolProvider stellt 6 Werkzeuge für die Arbeit mit Git-Repositories und Projektdateien bereit:
 
 ## Verfügbare Tools
 
-### 1. `get_current_branch`
+### 1. `list_open_prs`
+**Beschreibung:** Ruft die Liste offener Pull Requests aus einem GitHub-Repository ab
+
+**Parameter:**
+- `repository` (string, optional): GitHub Repository im Format 'owner/repo' (z.B. 'octocat/Hello-World')
+  - Optional wenn `github.repository` in der Konfiguration gesetzt ist
+- `state` (string, optional): Status der PRs: 'open', 'closed' oder 'all' (Standard: 'open')
+- `limit` (integer, optional): Maximale Anzahl der zurückzugebenden PRs (Standard: 30, Maximum: 100)
+
+**Rückgabe:**
+```json
+[
+  {
+    "number": 123,
+    "title": "Add new feature",
+    "description": "This PR adds...",
+    "author": "username",
+    "baseBranch": "main",
+    "headBranch": "feature/new-feature",
+    "baseSha": "abc123...",
+    "headSha": "def456...",
+    "repository": "owner/repo",
+    "state": "open",
+    "createdAt": "2026-01-10T10:00:00Z",
+    "updatedAt": "2026-01-13T15:30:00Z",
+    "url": "https://github.com/owner/repo/pull/123",
+    "draft": false,
+    "merged": false
+  }
+]
+```
+
+**Konfiguration:**
+
+In `application.properties`:
+```properties
+# GitHub Personal Access Token (empfohlen für höhere Rate Limits)
+# Token erstellen unter: https://github.com/settings/tokens
+# Benötigte Scopes: repo (für private Repos) oder public_repo (nur öffentliche Repos)
+github.token=${GITHUB_TOKEN:}
+
+# Standard GitHub Repository im Format 'owner/repo' (optional)
+github.repository=${GITHUB_REPOSITORY:}
+```
+
+Oder als Umgebungsvariablen:
+```bash
+export GITHUB_TOKEN=ghp_your_token_here
+export GITHUB_REPOSITORY=owner/repo
+```
+
+**Beispiele:**
+
+```bash
+# PRs aus Standard-Repository abrufen (wenn konfiguriert)
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{"name": "list_open_prs", "arguments": {}}'
+
+# PRs aus spezifischem Repository abrufen
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "list_open_prs",
+    "arguments": {
+      "repository": "octocat/Hello-World",
+      "state": "open",
+      "limit": 10
+    }
+  }'
+
+# Alle PRs (offen und geschlossen) abrufen
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "list_open_prs",
+    "arguments": {
+      "repository": "owner/repo",
+      "state": "all",
+      "limit": 50
+    }
+  }'
+```
+
+**Hinweise:**
+- Ohne Token: GitHub API Rate Limit beträgt 60 Anfragen/Stunde
+- Mit Token: GitHub API Rate Limit beträgt 5000 Anfragen/Stunde
+- Das Tool verwendet die GitHub REST API v3
+
+---
+
+### 2. `get_current_branch`
+**Beschreibung:** Gibt den Namen des aktuellen Git-Branches zurück
+
+**Parameter:** Keine
+
+**Rückgabe:**
+```json
+{
+  "branch": "main"
+}
+```
+
+---
+
+### 2. `get_current_branch`
 **Beschreibung:** Gibt den Namen des aktuellen Git-Branches zurück
 
 **Parameter:** Keine
@@ -27,7 +132,7 @@ curl -X POST http://localhost:8081/api/tools/execute \
 
 ---
 
-### 2. `get_git_status`
+### 3. `get_git_status`
 **Beschreibung:** Gibt den Status des Repositories zurück (geänderte, hinzugefügte, nicht verfolgte Dateien)
 
 **Parameter:** Keine
@@ -51,7 +156,31 @@ curl -X POST http://localhost:8081/api/tools/execute \
 
 ---
 
-### 3. `read_project_file`
+### 3. `get_git_status`
+**Beschreibung:** Gibt den Status des Repositories zurück (geänderte, hinzugefügte, nicht verfolgte Dateien)
+
+**Parameter:** Keine
+
+**Rückgabe:**
+```json
+{
+  "modified": ["src/main/java/Example.java"],
+  "added": ["new-file.txt"],
+  "untracked": ["temp.log"],
+  "deleted": ["old-file.java"]
+}
+```
+
+**Beispiel:**
+```bash
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{"name": "get_git_status", "arguments": {}}'
+```
+
+---
+
+### 4. `read_project_file`
 **Beschreibung:** Liest den Inhalt einer Datei aus dem Projekt
 
 **Parameter:**
@@ -86,7 +215,42 @@ curl -X POST http://localhost:8081/api/tools/execute \
 
 ---
 
-### 4. `list_project_files`
+### 4. `read_project_file`
+**Beschreibung:** Liest den Inhalt einer Datei aus dem Projekt
+
+**Parameter:**
+- `filePath` (string, required): Relativer Pfad zur Datei vom Projektstamm
+
+**Rückgabe:**
+```json
+{
+  "content": "...",
+  "path": "src/main/java/Example.java",
+  "size": 1234
+}
+```
+
+**Sicherheit:**
+- Path Traversal (..) ist verboten
+- Absolute Pfade sind verboten
+- Maximale Dateigröße: 1MB
+- Nur Textdateien: .java, .kt, .ts, .vue, .js, .md, .txt, .json, .yml, .properties, .xml
+
+**Beispiel:**
+```bash
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "read_project_file",
+    "arguments": {
+      "filePath": "src/main/java/de/jivz/mcp/controller/McpToolsController.java"
+    }
+  }'
+```
+
+---
+
+### 5. `list_project_files`
 **Beschreibung:** Gibt eine Liste von Dateien in einem Projektverzeichnis zurück
 
 **Parameter:**
@@ -122,7 +286,43 @@ curl -X POST http://localhost:8081/api/tools/execute \
 
 ---
 
-### 5. `get_git_log`
+### 5. `list_project_files`
+**Beschreibung:** Gibt eine Liste von Dateien in einem Projektverzeichnis zurück
+
+**Parameter:**
+- `directory` (string, optional): Pfad zum Verzeichnis (Standard: ".")
+- `recursive` (boolean, optional): Rekursiv durch Unterverzeichnisse (Standard: false)
+- `extensions` (array, optional): Filter nach Dateiendungen, z.B. ["java", "md"]
+
+**Rückgabe:**
+```json
+[
+  "src/main/java/Example.java",
+  "src/main/resources/application.properties",
+  "README.md"
+]
+```
+
+**Ausschlüsse:** .git/, node_modules/, target/, dist/, .idea/, .vscode/
+
+**Beispiel:**
+```bash
+# Alle Java-Dateien rekursiv auflisten
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "list_project_files",
+    "arguments": {
+      "directory": "src/main/java",
+      "recursive": true,
+      "extensions": ["java"]
+    }
+  }'
+```
+
+---
+
+### 6. `get_git_log`
 **Beschreibung:** Gibt die letzten Commits aus der Git-Historie zurück
 
 **Parameter:**
@@ -158,29 +358,44 @@ curl -X POST http://localhost:8081/api/tools/execute \
 
 ## Installation
 
-### 1. Abhängigkeit hinzufügen (bereits erledigt)
+### 1. Abhängigkeiten hinzufügen (bereits erledigt)
 
-Die JGit-Abhängigkeit wurde bereits zur `pom.xml` hinzugefügt:
+Die folgenden Abhängigkeiten wurden bereits zur `pom.xml` hinzugefügt:
 
 ```xml
+<!-- JGit für Git-Operationen -->
 <dependency>
     <groupId>org.eclipse.jgit</groupId>
     <artifactId>org.eclipse.jgit</artifactId>
-    <version>6.8.0.202311291450-r</version>
+    <version>7.2.1.202505142326-r</version>
+</dependency>
+
+<!-- GitHub API für Pull Request Operationen -->
+<dependency>
+    <groupId>org.kohsuke</groupId>
+    <artifactId>github-api</artifactId>
+    <version>1.321</version>
 </dependency>
 ```
 
 ### 2. Konfiguration
 
-In `application.properties` (optional):
+In `application.properties`:
 
 ```properties
 # Git Configuration
 # Project root directory (defaults to user.dir if not specified)
-git.project.root=/pfad/zum/projekt
+git.project.root=${user.dir}
+
+# GitHub Configuration (für list_open_prs Tool)
+# GitHub Personal Access Token (empfohlen für höhere Rate Limits)
+github.token=${GITHUB_TOKEN:}
+
+# Standard GitHub Repository im Format 'owner/repo' (optional)
+github.repository=${GITHUB_REPOSITORY:}
 ```
 
-Wenn nicht konfiguriert, wird automatisch `System.getProperty("user.dir")` verwendet.
+Wenn nicht konfiguriert, wird für lokale Git-Operationen automatisch `System.getProperty("user.dir")` verwendet.
 
 ### 3. Server starten
 
@@ -200,7 +415,8 @@ tools/git/
 ├── GetGitStatusTool.java         # Tool für Git-Status
 ├── ReadProjectFileTool.java      # Tool zum Dateilesen
 ├── ListProjectFilesTool.java     # Tool zum Dateiauflisten
-└── GetGitLogTool.java            # Tool für Git-Log
+├── GetGitLogTool.java            # Tool für Git-Log
+└── ListOpenPRsTool.java          # Tool für GitHub Pull Requests
 ```
 
 ### Design Pattern

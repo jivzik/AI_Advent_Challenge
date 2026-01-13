@@ -1,3 +1,4 @@
+/*
 package de.jivz.ai_challenge.mcp;
 
 import de.jivz.ai_challenge.exception.MCPExecutionException;
@@ -54,9 +55,9 @@ public class PerplexityMcpService extends BaseMCPService{
         }
     }
 
-    /**
-     * Адаптирует нестандартный ответ Perplexity к стандартному MCPToolResult
-     */
+    */
+/*
+
     private MCPToolResult adaptPerplexityResult(PerplexityToolResult perplexityResult) {
         Map<String, Object> metadata = new HashMap<>();
 

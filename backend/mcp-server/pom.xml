@@ -70,6 +70,13 @@
             <version>7.2.1.202505142326-r</version>
         </dependency>
 
+        <!-- GitHub API for Pull Request operations -->
+        <dependency>
+            <groupId>org.kohsuke</groupId>
+            <artifactId>github-api</artifactId>
+            <version>1.321</version>
+        </dependency>
+
     </dependencies>
 
     <build>
