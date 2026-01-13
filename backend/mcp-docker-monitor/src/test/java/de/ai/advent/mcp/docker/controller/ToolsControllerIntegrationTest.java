@@ -51,7 +51,7 @@ class ToolsControllerIntegrationTest {
     @Test
     void testCallToolWithMissingRequiredArgument() throws Exception {
         ToolCallRequest request = new ToolCallRequest();
-        request.setName("list_containers");
+        //request.setName("list_containers");
         request.setArguments(new HashMap<>()); // Missing container_name for get_container_logs
 
         mockMvc.perform(post("/api/tools/call")
@@ -100,7 +100,7 @@ class ToolsControllerIntegrationTest {
     @Test
     void testCallToolResponseHasTimestamp() throws Exception {
         ToolCallRequest request = new ToolCallRequest();
-        request.setName("list_containers");
+        //request.setName("list_containers");
         request.setArguments(new HashMap<>());
 
         mockMvc.perform(post("/api/tools/call")

@@ -19,7 +19,7 @@
 
     <modules>
         <module>perplexity-service</module>
-        <module>mcp-service</module>
+        <module>mcp-server</module>
         <module>google-service</module>
         <module>mcp-docker-monitor</module>
         <module>openrouter-service</module>

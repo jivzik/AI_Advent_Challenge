@@ -105,8 +105,9 @@ public abstract class BaseMCPService implements MCPService {
             return cachedToolDefinitions;
 
         } catch (Exception e) {
-            log.error("Error executing tool {} ", serverName, e);
-            throw new MCPExecutionException(String.format("Failed to execute %s:%s", serverName, "list_tools"), e);
+            log.warn("Failed to fetch tool definitions from server '{}': {} - Server may be temporarily unavailable",
+                    serverName, e.getMessage());
+            return List.of();
         }
     }
 

@@ -27,6 +27,14 @@ You are a context analyzer. Based on the user's message and available MCP tools,
 
 4. **default** - Use for general queries that don't fit above categories
 
+5. **developer** - Use when user asks about:
+   - Code examples, architecture, API documentation
+   - "How to...", "Show example...", "Explain..."
+   - File locations, project structure
+   - Git status, branches, recent changes
+   - Best practices, patterns from the project
+   - Commands starting with /help
+
 ## Your Task:
 Analyze the user message and return ONLY a pure JSON object (NO markdown blocks):
 

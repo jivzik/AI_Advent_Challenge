@@ -55,6 +55,15 @@ public class PromptLoaderService {
     @Value("classpath:prompts/context-detection.md")
     private Resource contextDetectionPrompt;
 
+    @Value("classpath:prompts/context-developer.md")
+    private Resource contextDeveloperPrompt;
+
+    @Value("classpath:prompts/developer-search.md")
+    private Resource developerSearchPrompt;
+
+    @Value("classpath:prompts/developer-code-style.md")
+    private Resource developerCodeStylePrompt;
+
     public PromptLoaderService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
@@ -73,6 +82,9 @@ public class PromptLoaderService {
             promptCache.put("context-tasks", loadResource(contextTasksPrompt));
             promptCache.put("context-calendar", loadResource(contextCalendarPrompt));
             promptCache.put("context-detection", loadResource(contextDetectionPrompt));
+            promptCache.put("context-developer", loadResource(contextDeveloperPrompt));
+            promptCache.put("developer-search", loadResource(developerSearchPrompt));
+            promptCache.put("developer-code-style", loadResource(developerCodeStylePrompt));
             log.info("Loaded {} prompts from resources", promptCache.size());
         } catch (IOException e) {
             log.error("Failed to load prompts", e);
@@ -218,6 +230,43 @@ public class PromptLoaderService {
         promptCache.clear();
         loadPrompts();
         log.info("Prompts reloaded");
+    }
+
+    /**
+     * Lädt einen Prompt nach Namen aus dem Cache.
+     *
+     * @param promptName Der Name des Prompts (ohne .md Extension)
+     * @return Der geladene Prompt oder null wenn nicht gefunden
+     */
+    public String loadPrompt(String promptName) {
+        String prompt = promptCache.get(promptName);
+        if (prompt == null) {
+            log.warn("Prompt not found in cache: {}", promptName);
+        }
+        return prompt;
+    }
+
+    /**
+     * Füllt Template-Variablen in einem Prompt.
+     * Ersetzt {{VAR_NAME}} mit entsprechenden Werten aus der Map.
+     *
+     * @param template Der Template-String mit Platzhaltern
+     * @param variables Map mit Variablennamen und Werten
+     * @return Der ausgefüllte Prompt
+     */
+    public String fillTemplate(String template, Map<String, String> variables) {
+        if (template == null || variables == null) {
+            return template;
+        }
+
+        String result = template;
+        for (Map.Entry<String, String> entry : variables.entrySet()) {
+            String placeholder = "{{" + entry.getKey() + "}}";
+            String value = entry.getValue() != null ? entry.getValue() : "";
+            result = result.replace(placeholder, value);
+        }
+
+        return result;
     }
 }
 

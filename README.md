@@ -1,116 +1,149 @@
 # AI Advent Challenge
 
-A simple chat application that connects a Vue 3 frontend with a Spring Boot backend, powered by Perplexity AI.
+> 🤖 Multi-Service AI Platform with MCP Integration, RAG, and Advanced Conversational Agents
 
-## 🌟 NEW FEATURES
+An enterprise-grade AI chat platform that integrates multiple AI providers (OpenRouter, Perplexity) with Model Context Protocol (MCP), Retrieval Augmented Generation (RAG), and specialized conversational agents.
 
-### 🌡️ Temperature Control (LATEST!)
+## 🎯 Core Features
 
-**Control AI creativity in real-time!**
+### 🔌 Model Context Protocol (MCP)
+- **Multi-Provider Architecture**: Native tools + Perplexity integration
+- **Dynamic Tool Discovery**: Auto-detect and execute MCP tools
+- **Bidirectional Communication**: Spring Boot ↔ Node.js MCP servers
+- 📖 [Quick Start](docs/quickstarts/MCP_SERVICE_QUICKSTART.md)
 
-**What it does:**
-- 🎚️ Horizontal slider to adjust temperature (0.0 - 2.0)
-- 🎯 **0.0-0.3**: Maximum precision, minimal creativity (facts, code, math)
-- ⚖️ **0.4-0.9**: Balance between accuracy and creativity (default: 0.7)
-- 🎨 **1.0-2.0**: Maximum creativity, experimental responses (writing, ideas)
-- 📊 Dynamic descriptions based on selected value
-- 🎨 Beautiful gradient slider with visual feedback
+### 🧠 RAG (Retrieval Augmented Generation)
+- **PostgreSQL + pgvector**: Vector similarity search
+- **Full-Text Search**: Multi-language support (EN, DE, RU)
+- **Document Upload**: PDF, TXT, FB2 with chunking
+- **Hybrid Search**: Combines semantic + keyword search
+- 📖 [Integration Guide](docs/architecture/RAG_MCP_INTEGRATION.md)
 
-**Use cases:**
-- Code generation: 0.1-0.3 for consistent results
-- General chat: 0.7 for balanced responses
-- Creative writing: 1.5-1.8 for unique ideas
-- Brainstorming: 1.2-2.0 for diverse suggestions
+### 🤖 AI Provider Integration
+- **OpenRouter**: 100+ LLM models (GPT-4, Claude, Gemini, etc.)
+- **Perplexity**: Real-time web search with Sonar models
+- **Multi-Turn Conversations**: Context-aware dialogue
+- **Tool Calling**: Function execution for complex tasks
+- 📖 [OpenRouter Guide](docs/quickstarts/OPENROUTER_QUICKSTART.md) | [Perplexity Guide](docs/quickstarts/PERPLEXITY_MCP_QUICKSTART.md)
 
----
+### 🎯 Specialized Agents
+- **Meta-Prompt Agent**: Universal AI that adapts to ANY goal
+- **Nutritionist Agent**: Family meal planning with KBJU calculations
+- **Auto-Schema Generation**: Dynamic JSON structure from goals
+- 📖 [Meta-Prompting](docs/features/META_PROMPTING_FEATURE.md) | [Nutritionist](docs/features/NUTRITIONIST_AGENT_FEATURE.md)
 
-### 🎯 Meta-Prompting - Universal AI Assistant
+### 💬 Conversation Management
+- **PostgreSQL Storage**: Long-term memory persistence
+- **Summary Reuse**: Token-efficient context management
+- **Multi-User Support**: Isolated conversation threads
+- **Reminder Scheduler**: Calendar integration for reminders
+- 📖 [History Implementation](docs/architecture/CHATBOT_HISTORY_IMPLEMENTATION.md)
 
-**The ultimate feature: ONE AI that adapts to ANY goal!**
+### 🎛️ Advanced Controls
+- **Temperature Slider**: 0.0-2.0 creativity control
+- **System Prompts**: Custom AI behavior
+- **JSON Mode**: Structured output with schema validation
+- **Model Pricing**: Real-time cost tracking
+- 📖 [Temperature Control](docs/features/TEMPERATURE_FEATURE.md)
 
-**What it does:**
-- ✅ Asks what you want to create/plan
-- ✅ Dynamically generates required fields
-- ✅ Collects data through natural conversation
-- ✅ Automatically stops when complete
-- ✅ Generates perfect output for your goal
+### 🔍 Search & Indexing
+- **FB2 Indexing**: Russian literature format support
+- **Relevance Filtering**: LLM-powered result reranking
+- **Keyword Search**: PostgreSQL FTS with morphology
+- 📖 [Search Guide](docs/features/FULL_TEXT_SEARCH_GUIDE.md)
 
-**Supported goals:**
-- ✈️ Travel Planning | 💼 Business Plans | 🛒 Purchase Decisions
-- 📝 Technical Specs | 💪 Workout Plans | 🎓 Study Plans
-- 🏠 Moving Plans | **...and ANYTHING else!**
+## 🏗️ Architecture
 
-**Activation:**
-```json
-{ "jsonMode": true, "jsonSchema": "meta_prompt" }
+### Backend Services
 ```
-
----
-
-### 🍽️ Nutritionist Agent Feature
-
-**Specialized AI for family meal planning**
-
-**Features:**
-- 🍽️ Generates personalized weekly menus for families
-- 🧮 Calculates KBJU (Calories, Proteins, Fats, Carbs) for each family member
-- 🛒 Creates shopping lists sorted by German supermarkets (Lidl, REWE, DM, etc.)
-- 🌾 Supports special diets (gluten-free, vegetarian, keto, etc.)
-- 🤖 Automatically stops when all data is collected
-- 📊 Real-time progress tracking in the UI
-
-**Activation:**
-```json
-{ "jsonMode": true, "jsonSchema": "nutritionist_mode" }
+backend/
+├── openrouter-service/     # Main API & OpenRouter integration (Port 8080)
+├── perplexity-service/     # Perplexity API wrapper (Port 8081)
+├── mcp-server/             # MCP Multi-Provider Server (Port 8083)
+├── google-service/         # Google Calendar integration (Port 8084)
+├── mcp-docker-monitor/     # Docker container monitoring
+└── rag-mcp-server/         # RAG with pgvector (MCP server)
 ```
-
-## Overview
-
-This project demonstrates a full-stack chat application where:
-- **Frontend** (Vue 3 + TypeScript) sends user messages
-- **Backend** (Spring Boot + Java 21) acts as an agent
-- **Perplexity AI API** processes and responds to messages
-
-## Tech Stack
-
-### Backend
-- Spring Boot 4.0.0
-- Java 21
-- Maven (Multi-module project)
-- WebClient for HTTP requests
 
 ### Frontend
-- Vue 3
-- TypeScript
-- Vite
-
-## Prerequisites
-
-- Java 21
-- Maven 3.x
-- Node.js 18+
-- Perplexity API Key
-
-## Quick Start
-
-### 1. Configure API Key
-
-Create a `.env` file in the project root:
-
-```bash
-PERPLEXITY_API_KEY=your-api-key-here
+```
+frontend/                   # Vue 3 + TypeScript (Port 5173)
+├── src/components/
+│   ├── ChatInterface.vue        # Main chat UI
+│   ├── MetaPromptChat.vue       # Meta-prompting mode
+│   ├── OpenRouterToolsSidebar.vue
+│   ├── ReminderDashboard.vue
+│   └── RAG*.vue                 # RAG upload/search/library
 ```
 
-### 2. Start Backend
+### MCP Servers
+```
+mcp-servers/
+└── perplexity-mcp-server/  # Node.js MCP server for Perplexity
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **Java 21** (OpenJDK or Oracle JDK)
+- **Node.js 18+** (for frontend & MCP servers)
+- **PostgreSQL 15+** with pgvector extension
+- **Maven 3.8+**
+- **Docker** (optional, for containerized setup)
+
+### 1. Database Setup
 
 ```bash
-cd backend/perplexity-service
+# Install PostgreSQL with pgvector
+./setup-postgres-memory.sh
+
+# Or use Docker
+docker run -d \
+  --name ai-postgres \
+  -e POSTGRES_USER=ai_user \
+  -e POSTGRES_PASSWORD=ai_password \
+  -e POSTGRES_DB=ai_memory \
+  -p 5432:5432 \
+  ankane/pgvector
+```
+
+### 2. Configure Environment Variables
+
+Create `.env` in project root:
+
+```bash
+# AI Providers
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
+PERPLEXITY_API_KEY=pplx-your-key-here
+
+# Database
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/ai_memory
+SPRING_DATASOURCE_USERNAME=ai_user
+SPRING_DATASOURCE_PASSWORD=ai_password
+
+# Google Calendar (optional)
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+```
+
+### 3. Start Backend Services
+
+```bash
+# Option A: Start all services
+./start-backend.sh
+
+# Option B: Start individual services
+cd backend/openrouter-service
 ./mvnw spring-boot:run
 ```
 
-Backend runs on: **http://localhost:8080**
+**Available Ports:**
+- OpenRouter Service: http://localhost:8080
+- Perplexity Service: http://localhost:8081
+- MCP Service: http://localhost:8083
+- Google Service: http://localhost:8084
 
-### 3. Start Frontend
+### 4. Start Frontend
 
 ```bash
 cd frontend
@@ -118,66 +151,212 @@ npm install
 npm run dev
 ```
 
-Frontend runs on: **http://localhost:5173**
+Frontend: **http://localhost:5173**
 
+### 5. Index Project Documentation (Optional)
 
-## API Endpoints
+Automatically index all project documentation into RAG:
 
-### POST /api/chat
-Send a chat message to the AI.
+```bash
+# Start RAG service first (port 8086)
+cd backend/rag-mcp-server
+./mvnw spring-boot:run &
 
-**Request:**
+# Index all documentation
+./index-project-docs.sh
+
+# Or dry-run to see what will be indexed
+./index-project-docs.sh --dry-run
+
+# Force reindex (delete existing docs first)
+./index-project-docs.sh --force
+```
+
+### 6. Verify Installation
+
+```bash
+# Test OpenRouter
+curl http://localhost:8080/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello!", "userId": "test", "provider": "openrouter"}'
+
+# Test MCP Tools
+curl http://localhost:8083/mcp/status
+
+# Test RAG Search (after indexing docs)
+curl http://localhost:8086/api/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "How to use OpenRouter?", "limit": 5}'
+```
+
+## 📡 API Overview
+
+### Main Chat API (OpenRouter Service)
+
+**POST** `/api/chat` - Send message to AI
+
 ```json
 {
-  "message": "Your question here"
+  "message": "Your question",
+  "userId": "user-123",
+  "conversationId": "conv-456",
+  "provider": "openrouter",  // or "perplexity"
+  "temperature": 0.7,
+  "jsonMode": false,
+  "jsonSchema": "auto",      // or "nutritionist_mode", "meta_prompt"
+  "systemPrompt": "Custom instructions..."
 }
 ```
 
-**Response:**
-```json
-{
-  "reply": "AI response",
-  "toolName": "PerplexityToolClient",
-  "timestamp": "2025-12-01T14:30:00.000Z"
-}
+### MCP Service
+
+- `GET /mcp/status` - Service status & tool count
+- `GET /mcp/providers` - List all MCP providers
+- `GET /mcp/tools` - List all available tools
+- `POST /mcp/execute` - Execute MCP tool
+
+### RAG Service
+
+- `POST /rag/upload` - Upload document for indexing
+- `POST /rag/search` - Semantic + keyword search
+- `GET /rag/documents` - List indexed documents
+- `DELETE /rag/documents/{id}` - Delete document
+
+### Perplexity Service
+
+- `POST /perplexity/ask` - Ask Perplexity AI
+- `POST /perplexity/search` - Web search
+- `GET /perplexity/tools` - Available MCP tools
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+./test-all.sh
+
+# Individual feature tests
+./test-openrouter.sh
+./test-perplexity-google-integration.sh
+./test-meta-prompt.sh
+./test-nutritionist.sh
+./test-temperature.sh
+./test-summary-reuse.sh
 ```
 
+## 📚 Documentation
 
-## Development
+### Quick Start Guides
+- [OpenRouter Setup](docs/quickstarts/OPENROUTER_QUICKSTART.md)
+- [Perplexity MCP Setup](docs/quickstarts/PERPLEXITY_MCP_QUICKSTART.md)
+- [MCP Service Setup](docs/quickstarts/MCP_SERVICE_QUICKSTART.md)
+- [Temperature Control](docs/quickstarts/TEMPERATURE_QUICKSTART.md)
+- [Nutritionist Agent](docs/quickstarts/NUTRITIONIST_QUICKSTART.md)
 
-### Run Tests
-```bash
-cd backend/perplexity-service
-./mvnw test
+### Architecture & Features
+- [MCP Multi-Provider Architecture](docs/architecture/MCP_MULTI_PROVIDER_ARCHITECTURE.md)
+- [RAG Integration](docs/architecture/RAG_MCP_INTEGRATION.md)
+- [Conversation History](docs/architecture/CHATBOT_HISTORY_IMPLEMENTATION.md)
+- [PostgreSQL Memory Setup](docs/setup/POSTGRESQL_MEMORY_SETUP.md)
+
+### Features Reference
+See [FEATURES_INDEX.md](FEATURES_INDEX.md) for complete feature list with links.
+
+## 🔧 Development
+
+### Project Structure
+
+```
+ai-advent-challenge/
+├── backend/           # Spring Boot microservices
+├── frontend/          # Vue 3 application
+├── mcp-servers/       # Node.js MCP servers
+├── infra/             # Infrastructure configs
+├── docs/              # Organized documentation
+└── *.sh               # Utility scripts
+    ├── index-project-docs.sh    # Index all docs into RAG
+    ├── start-backend.sh         # Start all backend services
+    ├── test-*.sh                # Feature testing scripts
+    └── ...
 ```
 
-### Build for Production
+### Build Commands
+
 ```bash
-# Backend
-cd backend/perplexity-service
-./mvnw clean package
+# Backend (all services)
+mvn clean install -DskipTests
 
 # Frontend
 cd frontend
 npm run build
+
+# MCP Server
+cd mcp-servers/perplexity-mcp-server
+npm install
+npm run build
 ```
 
+### Database Migrations
 
-## Configuration
+```bash
+# Initialize schema
+psql -U ai_user -d ai_memory -f infra/sql/schema.sql
 
-Backend configuration in `backend/perplexity-service/src/main/resources/application.properties`:
-
-```properties
-server.port=8080
-perplexity.api.base-url=https://api.perplexity.ai
-perplexity.api.key=${PERPLEXITY_API_KEY}
-perplexity.api.model=sonar
+# Enable pgvector
+psql -U ai_user -d ai_memory -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
-## Environment Variables
+## 🐳 Docker Support (Coming Soon)
+
+```bash
+docker-compose up -d
+```
+
+## 🤝 Tech Stack
+
+**Backend:**
+- Spring Boot 3.4.0
+- Java 21
+- PostgreSQL 15 + pgvector
+- WebFlux (reactive HTTP)
+- JPA/Hibernate
+
+**Frontend:**
+- Vue 3.5
+- TypeScript 5.9
+- Vite 7.2
+- Sass
+
+**AI/ML:**
+- OpenRouter API (100+ models)
+- Perplexity Sonar API
+- Model Context Protocol (MCP)
+- Custom embedding models
+
+## 📝 Environment Variables Reference
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PERPLEXITY_API_KEY` | Your Perplexity API key | - |
+| `OPENROUTER_API_KEY` | OpenRouter API key | Required |
+| `PERPLEXITY_API_KEY` | Perplexity API key | Required |
+| `SPRING_DATASOURCE_URL` | PostgreSQL JDBC URL | `jdbc:postgresql://localhost:5432/ai_memory` |
+| `SPRING_DATASOURCE_USERNAME` | Database username | `ai_user` |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | Required |
+| `GOOGLE_CLIENT_ID` | Google Calendar OAuth | Optional |
+| `GOOGLE_CLIENT_SECRET` | Google Calendar OAuth | Optional |
+
+## 🛡️ License
+
+This project is for educational purposes.
+
+## 🙏 Acknowledgments
+
+- [OpenRouter](https://openrouter.ai/) - Multi-model AI API
+- [Perplexity AI](https://www.perplexity.ai/) - Real-time search
+- [Anthropic MCP](https://modelcontextprotocol.io/) - Tool protocol
+- [pgvector](https://github.com/pgvector/pgvector) - Vector similarity
+
+---
+
+**Last Updated:** 2026-01-12
 
 

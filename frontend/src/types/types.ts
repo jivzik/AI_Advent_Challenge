@@ -15,6 +15,41 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp?: Date | string; // ⭐ Both Date and string supported!
+
+  // Developer Assistant fields
+  isDeveloperMode?: boolean;        // Ответ от Developer Assistant
+  sources?: string[];                // Источники из RAG (документы)
+  gitContext?: GitContext;           // Git контекст из ответа
+  codeBlocks?: CodeBlock[];          // Извлеченные code blocks
+  suggestedFiles?: string[];         // Рекомендованные файлы
+}
+
+/**
+ * Git context extracted from developer response
+ */
+export interface GitContext {
+  currentBranch?: string;
+  modifiedFiles?: string[];
+  addedFiles?: string[];
+  deletedFiles?: string[];
+}
+
+/**
+ * Code block with syntax highlighting info
+ */
+export interface CodeBlock {
+  language: string;
+  code: string;
+  lineNumbers?: boolean;
+}
+
+/**
+ * Developer Assistant status
+ */
+export interface DevAssistantStatus {
+  ragAvailable: boolean;
+  gitAvailable: boolean;
+  mcpServiceAvailable: boolean;
 }
 
 /**

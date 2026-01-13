@@ -19,6 +19,24 @@
               <p>Powered by {{ currentModelLabel }}</p>
             </div>
             <div class="header-controls">
+              <!-- Developer Assistant Status Indicators -->
+              <div v-if="hasAnyDevMessages" class="dev-status-indicators">
+                <span
+                    class="status-badge"
+                    :class="{ active: ragAvailable }"
+                    :title="ragAvailable ? 'RAG Available' : 'RAG Unavailable'"
+                >
+                  📚 RAG
+                </span>
+                <span
+                    class="status-badge"
+                    :class="{ active: gitAvailable }"
+                    :title="gitAvailable ? 'Git Tools Available' : 'Git Tools Unavailable'"
+                >
+                  🔧 Git
+                </span>
+              </div>
+
               <button
                   @click="toggleSettings"
                   class="settings-button"
@@ -88,21 +106,49 @@
           <div
               v-for="(msg, index) in messages"
               :key="index"
-              :class="['message', msg.role]"
+              :class="['message', msg.role, { 'dev-mode': msg.isDeveloperMode }]"
           >
             <div class="message-content">
-              <div class="message-role">{{ msg.role === 'user' ? 'You' : 'AI Agent' }}</div>
+              <!-- Developer Mode Badge -->
+              <div v-if="msg.isDeveloperMode" class="dev-badge">
+                🧑‍💻 Developer Assistant
+              </div>
+
+              <div class="message-role">
+                {{ msg.role === 'user' ? 'You' : (msg.isDeveloperMode ? 'Dev Assistant' : 'AI Agent') }}
+              </div>
+
               <div class="message-text markdown-content" v-html="renderMarkdown(msg.content)"></div>
+
+              <!-- Sources Section (if available) -->
+              <div v-if="msg.sources && msg.sources.length > 0" class="message-sources">
+                <div class="sources-header">📚 Sources:</div>
+                <div class="sources-list">
+                  <span
+                      v-for="(source, idx) in msg.sources"
+                      :key="idx"
+                      class="source-item"
+                  >
+                    {{ idx + 1 }}. <code>{{ source }}</code>
+                  </span>
+                </div>
+              </div>
+
               <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
             </div>
           </div>
           <div v-if="isLoading" class="message assistant loading">
             <div class="message-content">
-              <div class="message-role">AI Agent</div>
+              <div class="message-role">
+                {{ isDevAssistantRequest ? 'Dev Assistant' : 'AI Agent' }}
+              </div>
               <div class="typing-indicator">
                 <span></span>
                 <span></span>
                 <span></span>
+              </div>
+              <div v-if="isDevAssistantRequest" class="loading-hint">
+                Searching documentation and Git context...
               </div>
             </div>
           </div>
@@ -112,46 +158,64 @@
           <div v-if="error" class="error-message">
             {{ error }}
           </div>
+
+          <!-- Command Suggestions -->
+          <div v-if="showCommandSuggestions" class="command-suggestions">
+            <div
+                v-for="cmd in filteredCommands"
+                :key="cmd.command"
+                @click="insertCommand(cmd.command + ' ')"
+                class="command-item"
+            >
+              <span class="command-icon">{{ cmd.icon }}</span>
+              <div class="command-info">
+                <div class="command-name">{{ cmd.command }}</div>
+                <div class="command-desc">{{ cmd.description }}</div>
+              </div>
+            </div>
+          </div>
+
           <form @submit.prevent="sendMessage" class="chat-input-form">
             <input
                 v-model="currentMessage"
+                @input="handleInput"
                 type="text"
-                placeholder="Type your message..."
+                placeholder="Type your message or /help for developer assistance..."
                 :disabled="isLoading"
                 class="chat-input"
-          />
-          <!-- Model Selector Dropdown -->
-          <div class="model-selector">
-            <button
-                type="button"
-                @click="toggleModelDropdown"
-                :disabled="isLoading"
-                class="model-button"
-                :title="currentModelLabel"
-            >
-              {{ currentModelEmoji }}
-            </button>
-            <div v-if="showModelDropdown" class="model-dropdown">
+            />
+            <!-- Model Selector Dropdown -->
+            <div class="model-selector">
               <button
-                  v-for="model in availableModels"
-                  :key="model.id"
                   type="button"
-                  @click="selectModel(model)"
-                  :class="{ active: selectedModelId === model.id }"
-                  class="model-option"
+                  @click="toggleModelDropdown"
+                  :disabled="isLoading"
+                  class="model-button"
+                  :title="currentModelLabel"
               >
-                {{ model.emoji }} {{ model.name }}
+                {{ currentModelEmoji }}
               </button>
+              <div v-if="showModelDropdown" class="model-dropdown">
+                <button
+                    v-for="model in availableModels"
+                    :key="model.id"
+                    type="button"
+                    @click="selectModel(model)"
+                    :class="{ active: selectedModelId === model.id }"
+                    class="model-option"
+                >
+                  {{ model.emoji }} {{ model.name }}
+                </button>
+              </div>
             </div>
-          </div>
-          <button
-              type="submit"
-              :disabled="isLoading || !currentMessage.trim()"
-              class="send-button"
-          >
-            {{ isLoading ? 'Sending...' : 'Send' }}
-          </button>
-        </form>
+            <button
+                type="submit"
+                :disabled="isLoading || !currentMessage.trim()"
+                class="send-button"
+            >
+              {{ isLoading ? 'Sending...' : 'Send' }}
+            </button>
+          </form>
         </div>
       </div>
     </div>
@@ -162,8 +226,10 @@
 import { ref, nextTick, onMounted, computed } from 'vue';
 import OpenRouterSidebar from './OpenRouterSidebar.vue';
 import { OpenRouterChatService } from '../services/openRouterChatService';
+
 import { marked } from 'marked';
 import type { Message } from "../types/types";
+import {useDevAssistant} from "../services/useDevAssistant.ts";
 
 const messages = ref<Message[]>([]);
 const currentMessage = ref('');
@@ -175,9 +241,22 @@ const temperature = ref(0.7);
 const showModelDropdown = ref(false);
 const showSettings = ref(false);
 const sidebarRef = ref<InstanceType<typeof OpenRouterSidebar> | null>(null);
+const showCommandSuggestions = ref(false);
+const isDevAssistantRequest = ref(false);
 
 // Active conversation tracking
 const activeConversationId = ref<string | null>(null);
+
+// Developer Assistant composable
+const {
+  ragAvailable,
+  gitAvailable,
+  availableCommands,
+  checkAvailability,
+  isHelpCommand,
+  extractHelpQuery,
+  askDeveloperAssistant
+} = useDevAssistant();
 
 // Available OpenRouter models
 const availableModels = [
@@ -204,6 +283,19 @@ const currentModelEmoji = computed(() => {
 const selectedModel = computed(() => {
   const model = availableModels.find(m => m.id === selectedModelId.value);
   return model?.model || '';
+});
+
+const hasAnyDevMessages = computed(() => {
+  return messages.value.some(msg => msg.isDeveloperMode === true);
+});
+
+const filteredCommands = computed(() => {
+  const input = currentMessage.value.toLowerCase();
+  if (!input.startsWith('/')) return [];
+
+  return availableCommands.filter(cmd =>
+      cmd.command.toLowerCase().startsWith(input)
+  );
 });
 
 // Generate unique conversation ID
@@ -266,12 +358,29 @@ const formatTime = (timestamp?: Date | string): string => {
   });
 };
 
+const handleInput = () => {
+  // Show command suggestions if starts with /
+  showCommandSuggestions.value = currentMessage.value.startsWith('/') &&
+      currentMessage.value.length > 1;
+};
+
+const insertCommand = (command: string) => {
+  currentMessage.value = command;
+  showCommandSuggestions.value = false;
+  // Focus input
+  nextTick(() => {
+    const input = document.querySelector('.chat-input') as HTMLInputElement;
+    input?.focus();
+  });
+};
+
 const sendMessage = async () => {
   if (!currentMessage.value.trim() || isLoading.value) return;
 
   const userMessage = currentMessage.value;
   currentMessage.value = '';
   error.value = '';
+  showCommandSuggestions.value = false;
 
   // If no active conversation, create new one
   if (!activeConversationId.value) {
@@ -289,20 +398,40 @@ const sendMessage = async () => {
   isLoading.value = true;
 
   try {
-    const data = await OpenRouterChatService.sendMessage({
-      message: userMessage,
-      conversationId: conversationId.value,
-      systemPrompt: systemPrompt.value,
-      temperature: temperature.value,
-      model: selectedModel.value
-    });
+    // Check if it's a /help command
+    if (isHelpCommand(userMessage)) {
+      isDevAssistantRequest.value = true;
+      const query = extractHelpQuery(userMessage);
 
-    // Add assistant message to UI
-    messages.value.push({
-      role: 'assistant',
-      content: data.reply,
-      timestamp: new Date(data.timestamp)
-    });
+      console.log('🧑‍💻 Developer Assistant request:', query);
+
+      // Call Developer Assistant
+      const assistantMessage = await askDeveloperAssistant(
+          query,
+          conversationId.value,
+          'user-' + Date.now()
+      );
+
+      messages.value.push(assistantMessage);
+
+    } else {
+      // Normal chat flow
+      isDevAssistantRequest.value = false;
+
+      const data = await OpenRouterChatService.sendMessage({
+        message: userMessage,
+        conversationId: conversationId.value,
+        systemPrompt: systemPrompt.value,
+        temperature: temperature.value,
+        model: selectedModel.value
+      });
+
+      messages.value.push({
+        role: 'assistant',
+        content: data.reply,
+        timestamp: new Date(data.timestamp)
+      });
+    }
 
     scrollToBottom();
 
@@ -313,6 +442,7 @@ const sendMessage = async () => {
     console.error('Error sending message:', err);
   } finally {
     isLoading.value = false;
+    isDevAssistantRequest.value = false;
   }
 };
 
@@ -359,7 +489,137 @@ const handleNewConversation = () => {
   console.log('✅ New conversation started. ID:', conversationId.value);
 };
 
-onMounted(() => {
+onMounted(async () => {
   console.log('OpenRouter Chat initialized with conversation ID:', conversationId.value);
+
+  // Check Developer Assistant availability
+  await checkAvailability();
 });
 </script>
+
+<style scoped lang="scss">
+/* Existing styles remain the same... */
+
+/* Developer Mode Styles */
+.dev-status-indicators {
+  display: flex;
+  gap: 0.5rem;
+  margin-right: 1rem;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(128, 128, 128, 0.1);
+  color: #666;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  transition: all 0.3s ease;
+
+  &.active {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+    border-color: #4caf50;
+  }
+}
+
+.message.dev-mode {
+  border-left: 3px solid #2196f3;
+  background: linear-gradient(to right, rgba(33, 150, 243, 0.05), transparent);
+}
+
+.dev-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 12px;
+  background: #2196f3;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.message-sources {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(33, 150, 243, 0.05);
+  border-left: 3px solid #2196f3;
+  border-radius: 8px;
+
+  .sources-header {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #2196f3;
+  }
+
+  .sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .source-item {
+    font-size: 0.875rem;
+
+    code {
+      background: rgba(0, 0, 0, 0.05);
+      padding: 0.125rem 0.5rem;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+  }
+}
+
+.loading-hint {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #666;
+  font-style: italic;
+}
+
+.command-suggestions {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.command-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: rgba(33, 150, 243, 0.05);
+  }
+
+  .command-icon {
+    font-size: 1.5rem;
+  }
+
+  .command-info {
+    flex: 1;
+
+    .command-name {
+      font-weight: 600;
+      color: #2196f3;
+    }
+
+    .command-desc {
+      font-size: 0.75rem;
+      color: #666;
+    }
+  }
+}
+</style>
