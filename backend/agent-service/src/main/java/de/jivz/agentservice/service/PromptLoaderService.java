@@ -64,6 +64,9 @@ public class PromptLoaderService {
     @Value("classpath:prompts/developer-code-style.md")
     private Resource developerCodeStylePrompt;
 
+    @Value("classpath:prompts/code-reviewer.md")
+    private Resource codeReviewerPrompt;
+
     public PromptLoaderService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
@@ -85,6 +88,7 @@ public class PromptLoaderService {
             promptCache.put("context-developer", loadResource(contextDeveloperPrompt));
             promptCache.put("developer-search", loadResource(developerSearchPrompt));
             promptCache.put("developer-code-style", loadResource(developerCodeStylePrompt));
+            promptCache.put("code-reviewer", loadResource(codeReviewerPrompt));
             log.info("Loaded {} prompts from resources", promptCache.size());
         } catch (IOException e) {
             log.error("Failed to load prompts", e);

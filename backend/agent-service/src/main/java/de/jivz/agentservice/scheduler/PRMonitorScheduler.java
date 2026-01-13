@@ -30,7 +30,7 @@ public class PRMonitorScheduler {
      * Check for new PRs every 2 minutes
      * ShedLock prevents concurrent execution in distributed environment
      */
-    @Scheduled(fixedDelayString = "${code-review.scheduler.interval:120000}") // 2 min default
+    @Scheduled(fixedDelayString = "${code-review.scheduler.interval:60000}") // 2 min default
     @SchedulerLock(
             name = "pr_monitor_scheduler",
             lockAtLeastFor = "1m",  // Hold lock for at least 1 minute

@@ -55,9 +55,7 @@ public class PerplexityMcpService extends BaseMCPService{
         }
     }
 
-    */
-/*
-
+    /*
     private MCPToolResult adaptPerplexityResult(PerplexityToolResult perplexityResult) {
         Map<String, Object> metadata = new HashMap<>();
 
@@ -93,4 +91,6 @@ public class PerplexityMcpService extends BaseMCPService{
                 .metadata(metadata)
                 .build();
     }
+
 }
+*/

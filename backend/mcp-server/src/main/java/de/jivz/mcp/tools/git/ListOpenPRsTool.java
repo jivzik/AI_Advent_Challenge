@@ -23,7 +23,7 @@ public class ListOpenPRsTool implements Tool {
 
     private static final String NAME = "list_open_prs";
 
-    @Value("${github.token")
+    @Value("${github.token}")
     private String githubToken;
 
     @Value("${github.repository}")

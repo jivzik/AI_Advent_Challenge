@@ -1,5 +1,6 @@
 package de.jivz.agentservice.service;
 
+import de.jivz.agentservice.dto.ReviewDecision;
 import de.jivz.agentservice.dto.ReviewResult;
 import de.jivz.agentservice.persistence.PRReviewEntity;
 import de.jivz.agentservice.persistence.PRReviewRepository;
@@ -69,7 +70,7 @@ class ReviewStorageServiceTest {
                 .prAuthor("testuser")
                 .baseBranch("main")
                 .headBranch("feature")
-                .decision(ReviewResult.ReviewDecision.APPROVE)
+                .decision(ReviewDecision.APPROVE)
                 .summary("Looks good")
                 .totalIssues(2)
                 .reviewText("Full review text")
