@@ -117,6 +117,7 @@ public class ToolExecutionOrchestrator {
     /**
      * Führt ein einzelnes MCP-Tool aus.
      */
+    @SuppressWarnings("unchecked")
     private String executeSingleTool(ToolResponse.ToolCall toolCall) {
         log.info("🔧 Executing MCP tool: {} with args: {}",
                 toolCall.getName(), toolCall.getArguments());
@@ -129,6 +130,23 @@ public class ToolExecutionOrchestrator {
 
             if (result.isSuccess()) {
                 log.info("✅ MCP tool {} executed successfully", toolCall.getName());
+
+                // Bei GitHub Issue-Erstellung die Issue-Nummer und URL speichern
+                if ("git:create_github_issue".equals(toolCall.getName()) && result.getResult() != null) {
+                    if (result.getResult() instanceof Map) {
+                        Map<String, Object> resultMap = (Map<String, Object>) result.getResult();
+                        Object issueNumber = resultMap.get("number");
+                        Object issueUrl = resultMap.get("url");
+                        if (issueNumber != null) {
+                            // GitHub Issue als Ticket-Nummer speichern (Format: GH-123)
+                            String ticketNumber = "GH-" + issueNumber;
+                            ThreadLocalTicketContext.setTicketNumber(ticketNumber);
+                            ThreadLocalTicketContext.setGitHubIssueUrl(issueUrl != null ? issueUrl.toString() : null);
+                            log.info("🎫 Stored created GitHub issue: {} ({})", ticketNumber, issueUrl);
+                        }
+                    }
+                }
+
                 return objectMapper.writeValueAsString(result.getResult());
             } else {
                 log.warn("⚠️ MCP tool {} returned error: {}",

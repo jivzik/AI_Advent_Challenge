@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -58,6 +59,25 @@ public class DocumentManagementService {
     public Optional<DocumentDto> getDocumentByFileName(String fileName) {
         return documentRepository.findByFileName(fileName)
                 .map(DocumentDto::fromEntity);
+    }
+
+    /**
+     * Обновить метаданные документа.
+     *
+     * @param id идентификатор документа
+     * @param metadata новые метаданные
+     * @return обновленный документ
+     */
+    @Transactional
+    public DocumentDto updateDocumentMetadata(Long id, Map<String, Object> metadata) {
+        Document document = documentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
+
+        document.setMetadata(metadata);
+        document = documentRepository.save(document);
+
+        log.info("Updated metadata for document id={}: {}", id, metadata);
+        return DocumentDto.fromEntity(document);
     }
 
     /**

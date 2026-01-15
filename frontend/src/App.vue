@@ -50,6 +50,12 @@
       >
         Support Chat
       </button>
+      <button
+          @click="currentMode = 'team-assistant'"
+          :class="{ active: currentMode === 'team-assistant' }"
+      >
+        Team Assistent
+      </button>
     </div>
 
     <!-- Component Display -->
@@ -61,6 +67,7 @@
     <DocumentSearch v-else-if="currentMode === 'rag-search'" @navigate="handleNavigate" />
     <DocumentLibrary v-else-if="currentMode === 'rag-library'" @navigate="handleNavigate" />
     <SupportChat v-else-if="currentMode === 'support'" @navigate="handleNavigate" />
+    <TeamAssistantChat v-else-if="currentMode === 'team-assistant'" @navigate="handleNavigate" />
   </div>
 </template>
 
@@ -74,9 +81,10 @@ import DocumentUpload from './components/DocumentUpload.vue';
 import DocumentSearch from './components/DocumentSearch.vue';
 import DocumentLibrary from './components/DocumentLibrary.vue';
 import SupportChat from './components/SupportChat.vue';
+import TeamAssistantChat from './components/TeamAssistantChat.vue';
 
 
-type Mode = 'normal' | 'meta' | 'reminder' | 'openrouter' | 'rag-upload' | 'rag-search' | 'rag-library' |  'support';
+type Mode = 'normal' | 'meta' | 'reminder' | 'openrouter' | 'rag-upload' | 'rag-search' | 'rag-library' | 'support' | 'team-assistant';
 const currentMode = ref<Mode>('normal');
 
 const handleNavigate = (mode: string) => {

@@ -63,6 +63,87 @@
             </button>
           </div>
         </div>
+
+        <!-- Metadata Section -->
+        <div class="metadata-section">
+          <div class="settings-title">🏷️ Document Metadata (Optional)</div>
+          <div class="metadata-grid">
+            <div class="setting-item">
+              <label>Category</label>
+              <input
+                v-model="documentMetadata.category"
+                type="text"
+                placeholder="e.g., technical, legal, marketing"
+              />
+            </div>
+            <div class="setting-item">
+              <label>Project</label>
+              <input
+                v-model="documentMetadata.project"
+                type="text"
+                placeholder="e.g., AI_Advent_Challenge"
+              />
+            </div>
+            <div class="setting-item">
+              <label>Department</label>
+              <input
+                v-model="documentMetadata.department"
+                type="text"
+                placeholder="e.g., engineering, sales"
+              />
+            </div>
+            <div class="setting-item">
+              <label>Author</label>
+              <input
+                v-model="documentMetadata.author"
+                type="text"
+                placeholder="Document author"
+              />
+            </div>
+            <div class="setting-item">
+              <label>Tags (comma-separated)</label>
+              <input
+                v-model="documentMetadata.tagsInput"
+                type="text"
+                placeholder="e.g., java, spring-boot, rag"
+              />
+            </div>
+            <div class="setting-item">
+              <label>Priority</label>
+              <select v-model="documentMetadata.priority">
+                <option value="">None</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label>Language</label>
+              <input
+                v-model="documentMetadata.language"
+                type="text"
+                placeholder="e.g., de, en, fr"
+                maxlength="5"
+              />
+            </div>
+            <div class="setting-item">
+              <label>Version</label>
+              <input
+                v-model="documentMetadata.version"
+                type="text"
+                placeholder="e.g., 1.0.0"
+              />
+            </div>
+          </div>
+          <div class="metadata-actions">
+            <button @click="clearMetadata" class="clear-button">
+              Clear Metadata
+            </button>
+            <span class="metadata-hint">
+              💡 Metadata helps organize and filter documents
+            </span>
+          </div>
+        </div>
       </div>
 
       <!-- Error Banner -->
@@ -193,6 +274,26 @@ const chunkingSettings = ref<ChunkingSettings>({
   strategy: 'recursive'
 });
 
+const documentMetadata = ref<{
+  category: string;
+  project: string;
+  department: string;
+  author: string;
+  tagsInput: string;
+  priority: string;
+  language: string;
+  version: string;
+}>({
+  category: '',
+  project: '',
+  department: '',
+  author: '',
+  tagsInput: '',
+  priority: '',
+  language: '',
+  version: ''
+});
+
 // Methods
 const resetSettings = () => {
   chunkingSettings.value = {
@@ -200,6 +301,64 @@ const resetSettings = () => {
     overlapSize: 100,
     strategy: 'recursive'
   };
+};
+
+const clearMetadata = () => {
+  documentMetadata.value = {
+    category: '',
+    project: '',
+    department: '',
+    author: '',
+    tagsInput: '',
+    priority: '',
+    language: '',
+    version: ''
+  };
+};
+
+const buildMetadata = (): Record<string, any> | undefined => {
+  const metadata: Record<string, any> = {};
+  let hasMetadata = false;
+
+  if (documentMetadata.value.category) {
+    metadata.category = documentMetadata.value.category;
+    hasMetadata = true;
+  }
+  if (documentMetadata.value.project) {
+    metadata.project = documentMetadata.value.project;
+    hasMetadata = true;
+  }
+  if (documentMetadata.value.department) {
+    metadata.department = documentMetadata.value.department;
+    hasMetadata = true;
+  }
+  if (documentMetadata.value.author) {
+    metadata.author = documentMetadata.value.author;
+    hasMetadata = true;
+  }
+  if (documentMetadata.value.priority) {
+    metadata.priority = documentMetadata.value.priority;
+    hasMetadata = true;
+  }
+  if (documentMetadata.value.language) {
+    metadata.language = documentMetadata.value.language;
+    hasMetadata = true;
+  }
+  if (documentMetadata.value.version) {
+    metadata.version = documentMetadata.value.version;
+    hasMetadata = true;
+  }
+  if (documentMetadata.value.tagsInput) {
+    metadata.tags = documentMetadata.value.tagsInput
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+    if (metadata.tags.length > 0) {
+      hasMetadata = true;
+    }
+  }
+
+  return hasMetadata ? metadata : undefined;
 };
 
 const handleDragEnter = () => {
@@ -287,7 +446,8 @@ const uploadFile = async (file: File) => {
       }
     }, 500);
 
-    const result = await ragDocumentService.uploadDocument(file, chunkingSettings.value);
+    const metadata = buildMetadata();
+    const result = await ragDocumentService.uploadDocument(file, chunkingSettings.value, metadata);
 
     clearInterval(progressInterval);
     doc.progress = 100;
@@ -441,6 +601,37 @@ onMounted(() => {
     @include button-secondary;
     padding: $spacing-sm $spacing-md;
     font-size: $font-size-sm;
+  }
+
+  .metadata-section {
+    margin-top: $spacing-lg;
+    padding-top: $spacing-lg;
+    border-top: 1px solid $border-light;
+  }
+
+  .metadata-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  .metadata-actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-top: $spacing-md;
+
+    .clear-button {
+      @include button-secondary;
+      padding: $spacing-sm $spacing-md;
+      font-size: $font-size-sm;
+    }
+
+    .metadata-hint {
+      font-size: $font-size-sm;
+      color: $text-muted;
+    }
   }
 }
 

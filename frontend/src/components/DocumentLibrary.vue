@@ -126,8 +126,27 @@
                 <span>{{ formatSize(doc.fileSize) }}</span>
                 <span>{{ formatTime(doc.createdAt) }}</span>
               </div>
+              <div v-if="doc.metadata && Object.keys(doc.metadata).length > 0" class="card-metadata">
+                <div v-if="doc.metadata.category" class="metadata-badge category">
+                  📁 {{ doc.metadata.category }}
+                </div>
+                <div v-if="doc.metadata.priority" class="metadata-badge" :class="`priority-${doc.metadata.priority}`">
+                  🔥 {{ doc.metadata.priority }}
+                </div>
+                <div v-if="doc.metadata.tags && Array.isArray(doc.metadata.tags)" class="metadata-tags">
+                  <span v-for="tag in doc.metadata.tags.slice(0, 3)" :key="tag" class="tag">
+                    #{{ tag }}
+                  </span>
+                  <span v-if="doc.metadata.tags.length > 3" class="tag-more">
+                    +{{ doc.metadata.tags.length - 3 }}
+                  </span>
+                </div>
+              </div>
             </div>
             <div class="card-actions">
+              <button @click="viewMetadata(doc)" class="card-btn" title="View Metadata">
+                🏷️ Info
+              </button>
               <button @click="searchInDocument(doc)" class="card-btn">
                 🔍 Search
               </button>
@@ -147,6 +166,7 @@
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Metadata</th>
                 <th>Chunks</th>
                 <th>Size</th>
                 <th>Date</th>
@@ -163,10 +183,23 @@
                   <span class="doc-icon">{{ getFileIcon(doc.fileType) }}</span>
                   <span class="doc-name">{{ doc.fileName }}</span>
                 </td>
+                <td class="metadata-cell">
+                  <div v-if="doc.metadata && Object.keys(doc.metadata).length > 0" class="table-metadata">
+                    <span v-if="doc.metadata.category" class="meta-pill">{{ doc.metadata.category }}</span>
+                    <span v-if="doc.metadata.priority" class="meta-pill" :class="`priority-${doc.metadata.priority}`">{{ doc.metadata.priority }}</span>
+                    <button v-if="Object.keys(doc.metadata).length > 2" @click="viewMetadata(doc)" class="meta-more-btn">
+                      +{{ Object.keys(doc.metadata).length - 2 }}
+                    </button>
+                  </div>
+                  <span v-else class="no-metadata">—</span>
+                </td>
                 <td class="number-cell">{{ doc.chunkCount }}</td>
                 <td class="number-cell">{{ formatSize(doc.fileSize) }}</td>
                 <td>{{ formatDate(doc.createdAt) }}</td>
                 <td class="actions-cell">
+                  <button @click="viewMetadata(doc)" class="icon-btn" title="Metadata">
+                    🏷️
+                  </button>
                   <button @click="searchInDocument(doc)" class="icon-btn" title="Search">
                     🔍
                   </button>
@@ -234,6 +267,136 @@
           </div>
         </div>
       </div>
+
+      <!-- Metadata Modal -->
+      <div v-if="showMetadataModal" class="modal-overlay" @click.self="closeMetadataModal">
+        <div class="modal modal-metadata">
+          <div class="modal-header">
+            <div class="modal-title">
+              <span class="modal-icon">🏷️</span>
+              <span>Document Metadata</span>
+            </div>
+            <button @click="closeMetadataModal" class="modal-close">✕</button>
+          </div>
+          <div class="modal-body">
+            <div v-if="selectedDocument" class="metadata-details">
+              <div class="metadata-section">
+                <h3>📄 Document Info</h3>
+                <div class="metadata-row">
+                  <span class="metadata-key">File Name:</span>
+                  <span class="metadata-value">{{ selectedDocument.fileName }}</span>
+                </div>
+                <div class="metadata-row">
+                  <span class="metadata-key">File Type:</span>
+                  <span class="metadata-value">{{ selectedDocument.fileType }}</span>
+                </div>
+                <div class="metadata-row">
+                  <span class="metadata-key">File Size:</span>
+                  <span class="metadata-value">{{ formatSize(selectedDocument.fileSize) }}</span>
+                </div>
+                <div class="metadata-row">
+                  <span class="metadata-key">Chunks:</span>
+                  <span class="metadata-value">{{ selectedDocument.chunkCount }}</span>
+                </div>
+                <div class="metadata-row">
+                  <span class="metadata-key">Status:</span>
+                  <span class="metadata-value status" :class="selectedDocument.status.toLowerCase()">
+                    {{ selectedDocument.status }}
+                  </span>
+                </div>
+                <div class="metadata-row">
+                  <span class="metadata-key">Created:</span>
+                  <span class="metadata-value">{{ formatDate(selectedDocument.createdAt) }}</span>
+                </div>
+                <div class="metadata-row">
+                  <span class="metadata-key">Updated:</span>
+                  <span class="metadata-value">{{ formatDate(selectedDocument.updatedAt) }}</span>
+                </div>
+              </div>
+
+              <div class="metadata-section">
+                <div class="metadata-header">
+                  <h3>🏷️ Custom Metadata</h3>
+                  <button v-if="!isEditingMetadata" @click="startEditMetadata" class="edit-btn">
+                    ✏️ Edit
+                  </button>
+                </div>
+
+                <div v-if="!isEditingMetadata">
+                  <div v-if="selectedDocument.metadata && Object.keys(selectedDocument.metadata).length > 0">
+                    <div v-for="(value, key) in selectedDocument.metadata" :key="key" class="metadata-row">
+                      <span class="metadata-key">{{ formatMetadataKey(key) }}:</span>
+                      <span class="metadata-value">
+                        <span v-if="Array.isArray(value)" class="metadata-array">
+                          <span v-for="(item, idx) in value" :key="idx" class="array-item">
+                            {{ item }}
+                          </span>
+                        </span>
+                        <span v-else-if="typeof value === 'object'">
+                          {{ JSON.stringify(value, null, 2) }}
+                        </span>
+                        <span v-else>{{ value }}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <p v-else class="no-metadata-text">No custom metadata available</p>
+                </div>
+
+                <div v-else class="metadata-edit-form">
+                  <div class="form-row">
+                    <label>Category</label>
+                    <input v-model="editMetadata.category" type="text" placeholder="e.g., technical, legal" />
+                  </div>
+                  <div class="form-row">
+                    <label>Project</label>
+                    <input v-model="editMetadata.project" type="text" placeholder="e.g., AI_Advent_Challenge" />
+                  </div>
+                  <div class="form-row">
+                    <label>Department</label>
+                    <input v-model="editMetadata.department" type="text" placeholder="e.g., engineering" />
+                  </div>
+                  <div class="form-row">
+                    <label>Author</label>
+                    <input v-model="editMetadata.author" type="text" placeholder="Document author" />
+                  </div>
+                  <div class="form-row">
+                    <label>Tags (comma-separated)</label>
+                    <input v-model="editMetadata.tagsInput" type="text" placeholder="e.g., java, spring-boot" />
+                  </div>
+                  <div class="form-row">
+                    <label>Priority</label>
+                    <select v-model="editMetadata.priority">
+                      <option value="">None</option>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label>Language</label>
+                    <input v-model="editMetadata.language" type="text" placeholder="e.g., de, en" maxlength="5" />
+                  </div>
+                  <div class="form-row">
+                    <label>Version</label>
+                    <input v-model="editMetadata.version" type="text" placeholder="e.g., 1.0.0" />
+                  </div>
+                  <div class="form-actions">
+                    <button @click="saveMetadata" class="save-btn" :disabled="isSavingMetadata">
+                      {{ isSavingMetadata ? '💾 Saving...' : '💾 Save' }}
+                    </button>
+                    <button @click="cancelEditMetadata" class="cancel-btn">
+                      ❌ Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button @click="closeMetadataModal" class="modal-btn">Close</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -258,6 +421,19 @@ const sortBy = ref('date-desc');
 const selectedDocument = ref<Document | null>(null);
 const documentChunks = ref<Chunk[]>([]);
 const showChunksModal = ref(false);
+const showMetadataModal = ref(false);
+const isEditingMetadata = ref(false);
+const isSavingMetadata = ref(false);
+const editMetadata = ref({
+  category: '',
+  project: '',
+  department: '',
+  author: '',
+  tagsInput: '',
+  priority: '',
+  language: '',
+  version: ''
+});
 
 // Computed
 const filteredDocuments = computed(() => {
@@ -357,6 +533,106 @@ const closeModal = () => {
   showChunksModal.value = false;
   selectedDocument.value = null;
   documentChunks.value = [];
+};
+
+const viewMetadata = (doc: Document) => {
+  selectedDocument.value = doc;
+  showMetadataModal.value = true;
+};
+
+const closeMetadataModal = () => {
+  showMetadataModal.value = false;
+  isEditingMetadata.value = false;
+  selectedDocument.value = null;
+};
+
+const startEditMetadata = () => {
+  if (!selectedDocument.value) return;
+
+  const meta = selectedDocument.value.metadata || {};
+
+  editMetadata.value = {
+    category: meta.category || '',
+    project: meta.project || '',
+    department: meta.department || '',
+    author: meta.author || '',
+    tagsInput: Array.isArray(meta.tags) ? meta.tags.join(', ') : '',
+    priority: meta.priority || '',
+    language: meta.language || '',
+    version: meta.version || ''
+  };
+
+  isEditingMetadata.value = true;
+};
+
+const cancelEditMetadata = () => {
+  isEditingMetadata.value = false;
+  editMetadata.value = {
+    category: '',
+    project: '',
+    department: '',
+    author: '',
+    tagsInput: '',
+    priority: '',
+    language: '',
+    version: ''
+  };
+};
+
+const saveMetadata = async () => {
+  if (!selectedDocument.value) return;
+
+  isSavingMetadata.value = true;
+
+  try {
+    const metadata: Record<string, any> = {};
+
+    if (editMetadata.value.category) metadata.category = editMetadata.value.category;
+    if (editMetadata.value.project) metadata.project = editMetadata.value.project;
+    if (editMetadata.value.department) metadata.department = editMetadata.value.department;
+    if (editMetadata.value.author) metadata.author = editMetadata.value.author;
+    if (editMetadata.value.priority) metadata.priority = editMetadata.value.priority;
+    if (editMetadata.value.language) metadata.language = editMetadata.value.language;
+    if (editMetadata.value.version) metadata.version = editMetadata.value.version;
+
+    if (editMetadata.value.tagsInput) {
+      const tags = editMetadata.value.tagsInput
+        .split(',')
+        .map(t => t.trim())
+        .filter(t => t.length > 0);
+      if (tags.length > 0) {
+        metadata.tags = tags;
+      }
+    }
+
+    const updatedDoc = await ragDocumentService.updateDocumentMetadata(
+      selectedDocument.value.id,
+      metadata
+    );
+
+    // Update local state
+    selectedDocument.value = updatedDoc;
+    const index = documents.value.findIndex(d => d.id === updatedDoc.id);
+    if (index !== -1) {
+      documents.value[index] = updatedDoc;
+    }
+
+    isEditingMetadata.value = false;
+  } catch (err) {
+    error.value = 'Failed to update metadata';
+    console.error('Metadata update error:', err);
+  } finally {
+    isSavingMetadata.value = false;
+  }
+};
+
+const formatMetadataKey = (key: string): string => {
+  // Convert camelCase or snake_case to Title Case
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/_/g, ' ')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
 };
 
 const copyChunk = async (text: string) => {
@@ -884,6 +1160,30 @@ onMounted(() => {
         color: $text-muted;
         margin-right: $spacing-xs;
       }
+
+      &.status {
+        padding: 2px $spacing-xs;
+        border-radius: $radius-sm;
+        display: inline-block;
+        text-transform: uppercase;
+        font-size: $font-size-xs;
+        font-weight: 600;
+
+        &.ready {
+          background: rgba(0, 128, 0, 0.1);
+          color: #080;
+        }
+
+        &.processing {
+          background: rgba(255, 165, 0, 0.1);
+          color: #f90;
+        }
+
+        &.error {
+          background: rgba(255, 0, 0, 0.1);
+          color: #c33;
+        }
+      }
     }
   }
 }
@@ -948,6 +1248,214 @@ onMounted(() => {
   .modal-btn {
     @include button-secondary;
     padding: $spacing-sm $spacing-lg;
+  }
+}
+
+// Metadata-specific styles
+.card-metadata {
+  margin-top: $spacing-sm;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+  align-items: center;
+
+  .metadata-badge {
+    padding: 2px $spacing-xs;
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    background: $bg-light;
+    border: 1px solid $border-light;
+    white-space: nowrap;
+
+    &.category {
+      background: rgba($primary-color, 0.1);
+      border-color: rgba($primary-color, 0.3);
+      color: $primary-color;
+    }
+
+    &.priority-high {
+      background: rgba(255, 0, 0, 0.1);
+      border-color: rgba(255, 0, 0, 0.3);
+      color: #c33;
+    }
+
+    &.priority-medium {
+      background: rgba(255, 165, 0, 0.1);
+      border-color: rgba(255, 165, 0, 0.3);
+      color: #f90;
+    }
+
+    &.priority-low {
+      background: rgba(0, 128, 0, 0.1);
+      border-color: rgba(0, 128, 0, 0.3);
+      color: #080;
+    }
+  }
+
+  .metadata-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+
+    .tag {
+      padding: 2px 6px;
+      background: rgba($primary-color, 0.1);
+      border-radius: $radius-sm;
+      font-size: $font-size-xs;
+      color: $primary-color;
+    }
+
+    .tag-more {
+      padding: 2px 6px;
+      background: $bg-light;
+      border-radius: $radius-sm;
+      font-size: $font-size-xs;
+      color: $text-muted;
+      font-weight: 600;
+    }
+  }
+}
+
+.metadata-cell {
+  min-width: 150px;
+
+  .table-metadata {
+    display: flex;
+    gap: $spacing-xs;
+    align-items: center;
+    flex-wrap: wrap;
+
+    .meta-pill {
+      padding: 2px $spacing-xs;
+      border-radius: $radius-sm;
+      font-size: $font-size-xs;
+      background: $bg-light;
+      border: 1px solid $border-light;
+      white-space: nowrap;
+
+      &.priority-high {
+        background: rgba(255, 0, 0, 0.1);
+        border-color: rgba(255, 0, 0, 0.3);
+        color: #c33;
+      }
+
+      &.priority-medium {
+        background: rgba(255, 165, 0, 0.1);
+        border-color: rgba(255, 165, 0, 0.3);
+        color: #f90;
+      }
+
+      &.priority-low {
+        background: rgba(0, 128, 0, 0.1);
+        border-color: rgba(0, 128, 0, 0.3);
+        color: #080;
+      }
+    }
+
+    .meta-more-btn {
+      padding: 2px 6px;
+      background: $bg-light;
+      border: 1px solid $border-light;
+      border-radius: $radius-sm;
+      font-size: $font-size-xs;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover {
+        background: $primary-color;
+        color: $text-white;
+        border-color: $primary-color;
+      }
+    }
+  }
+
+  .no-metadata {
+    color: $text-muted;
+    font-style: italic;
+  }
+}
+
+.modal-metadata {
+  .metadata-details {
+    .metadata-section {
+      margin-bottom: $spacing-lg;
+
+      h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: $spacing-md;
+        padding-bottom: $spacing-sm;
+        border-bottom: 2px solid $border-light;
+      }
+
+      .metadata-row {
+        display: flex;
+        padding: $spacing-sm 0;
+        border-bottom: 1px solid $border-light;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .metadata-key {
+          flex: 0 0 150px;
+          font-weight: 600;
+          color: $text-muted;
+          font-size: $font-size-sm;
+        }
+
+        .metadata-value {
+          flex: 1;
+          color: $text-dark;
+          font-size: $font-size-sm;
+          word-break: break-word;
+
+          &.status {
+            padding: 2px $spacing-xs;
+            border-radius: $radius-sm;
+            display: inline-block;
+            text-transform: uppercase;
+            font-size: $font-size-xs;
+            font-weight: 600;
+
+            &.ready {
+              background: rgba(0, 128, 0, 0.1);
+              color: #080;
+            }
+
+            &.processing {
+              background: rgba(255, 165, 0, 0.1);
+              color: #f90;
+            }
+
+            &.error {
+              background: rgba(255, 0, 0, 0.1);
+              color: #c33;
+            }
+          }
+
+          .metadata-array {
+            display: flex;
+            flex-wrap: wrap;
+            gap: $spacing-xs;
+
+            .array-item {
+              padding: 2px $spacing-xs;
+              background: rgba($primary-color, 0.1);
+              border-radius: $radius-sm;
+              font-size: $font-size-xs;
+              color: $primary-color;
+            }
+          }
+        }
+      }
+
+      .no-metadata-text {
+        color: $text-muted;
+        font-style: italic;
+        margin: $spacing-md 0;
+      }
+    }
   }
 }
 </style>

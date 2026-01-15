@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -51,6 +52,15 @@ public class RagFacade {
     }
 
     /**
+     * Загрузить документ с метаданными.
+     * @param file загружаемый файл
+     * @param metadata метаданные в формате JSON-строки (может быть null)
+     */
+    public DocumentDto uploadDocument(MultipartFile file, String metadata) throws IOException {
+        return uploadService.uploadDocument(file, metadata);
+    }
+
+    /**
      * Получить все документы.
      */
     public List<DocumentDto> getAllDocuments() {
@@ -62,6 +72,13 @@ public class RagFacade {
      */
     public Optional<DocumentDto> getDocument(Long id) {
         return documentService.getDocument(id);
+    }
+
+    /**
+     * Обновить метаданные документа.
+     */
+    public DocumentDto updateDocumentMetadata(Long id, Map<String, Object> metadata) {
+        return documentService.updateDocumentMetadata(id, metadata);
     }
 
     /**
