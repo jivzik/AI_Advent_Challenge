@@ -2,7 +2,9 @@
 
 ## Übersicht
 
-Der GitToolProvider stellt 6 Werkzeuge für die Arbeit mit Git-Repositories und Projektdateien bereit:
+Der GitToolProvider stellt 10 Werkzeuge für die Arbeit mit Git-Repositories, Projektdateien und GitHub Issues bereit:
+- 6 Tools für lokale Git-Operationen und Dateiverwaltung
+- 4 Tools für GitHub Issue-Management (Erstellen, Auflisten, Bearbeiten, Löschen)
 
 ## Verfügbare Tools
 
@@ -356,6 +358,191 @@ curl -X POST http://localhost:8081/api/tools/execute \
 
 ---
 
+## GitHub Issue Management Tools
+
+### 7. `list_github_issues`
+**Beschreibung:** Ruft die Liste von Issues aus einem GitHub-Repository ab
+
+**Parameter:**
+- `repository` (string, optional): GitHub Repository im Format 'owner/repo'
+- `state` (string, optional): Status der Issues: 'open', 'closed' oder 'all' (Standard: 'open')
+- `labels` (array, optional): Filter nach Label-Namen
+- `assignee` (string, optional): Filter nach Assignee-Username
+- `creator` (string, optional): Filter nach Creator-Username
+- `limit` (integer, optional): Maximale Anzahl (Standard: 30, Maximum: 100)
+
+**Rückgabe:**
+```json
+[
+  {
+    "number": 42,
+    "title": "Bug in feature X",
+    "body": "Description...",
+    "state": "open",
+    "author": "username",
+    "url": "https://github.com/owner/repo/issues/42",
+    "createdAt": "2026-01-10T10:00:00Z",
+    "updatedAt": "2026-01-13T15:30:00Z",
+    "commentsCount": 5,
+    "labels": ["bug", "priority-high"],
+    "assignees": ["developer1"],
+    "milestone": "v1.0"
+  }
+]
+```
+
+**Beispiel:**
+```bash
+# Alle offenen Issues mit Label "bug" abrufen
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "list_github_issues",
+    "arguments": {
+      "repository": "owner/repo",
+      "state": "open",
+      "labels": ["bug"],
+      "limit": 20
+    }
+  }'
+```
+
+---
+
+### 8. `create_github_issue`
+**Beschreibung:** Erstellt ein neues Issue in einem GitHub-Repository
+
+**Parameter:**
+- `repository` (string, optional): GitHub Repository im Format 'owner/repo'
+- `title` (string, **required**): Titel des Issues
+- `body` (string, optional): Beschreibung des Issues
+- `labels` (array, optional): Array von Label-Namen
+- `assignees` (array, optional): Array von GitHub-Usernames zum Zuweisen
+- `milestone` (integer, optional): Milestone-Nummer
+
+**Rückgabe:**
+```json
+{
+  "number": 43,
+  "title": "New feature request",
+  "body": "We need...",
+  "state": "open",
+  "author": "current-user",
+  "url": "https://github.com/owner/repo/issues/43",
+  "createdAt": "2026-01-15T10:00:00Z",
+  "updatedAt": "2026-01-15T10:00:00Z",
+  "labels": ["enhancement"],
+  "assignees": ["developer1", "developer2"],
+  "milestone": "v1.1"
+}
+```
+
+**Beispiel:**
+```bash
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "create_github_issue",
+    "arguments": {
+      "repository": "owner/repo",
+      "title": "Add new feature",
+      "body": "We need to implement feature X because...",
+      "labels": ["enhancement", "priority-high"],
+      "assignees": ["developer1"]
+    }
+  }'
+```
+
+---
+
+### 9. `update_github_issue`
+**Beschreibung:** Aktualisiert ein existierendes GitHub Issue
+
+**Parameter:**
+- `repository` (string, optional): GitHub Repository im Format 'owner/repo'
+- `issueNumber` (integer, **required**): Issue-Nummer zum Aktualisieren
+- `title` (string, optional): Neuer Titel
+- `body` (string, optional): Neue Beschreibung
+- `state` (string, optional): Neuer Status: 'open' oder 'closed'
+- `labels` (array, optional): Neue Labels (ersetzt existierende)
+- `assignees` (array, optional): Neue Assignees (ersetzt existierende)
+- `milestone` (integer, optional): Milestone-Nummer (-1 um Milestone zu entfernen)
+
+**Rückgabe:**
+```json
+{
+  "number": 43,
+  "title": "Updated title",
+  "body": "Updated description...",
+  "state": "open",
+  "author": "original-author",
+  "url": "https://github.com/owner/repo/issues/43",
+  "createdAt": "2026-01-15T10:00:00Z",
+  "updatedAt": "2026-01-15T11:00:00Z",
+  "labels": ["enhancement", "in-progress"],
+  "assignees": ["developer2"],
+  "milestone": "v1.2"
+}
+```
+
+**Beispiel:**
+```bash
+# Issue-Status auf "closed" setzen und Label hinzufügen
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "update_github_issue",
+    "arguments": {
+      "repository": "owner/repo",
+      "issueNumber": 43,
+      "state": "closed",
+      "labels": ["enhancement", "completed"]
+    }
+  }'
+```
+
+---
+
+### 10. `delete_github_issue`
+**Beschreibung:** Schließt ein GitHub Issue (echtes Löschen ist aus Audit-Gründen nicht möglich)
+
+**Parameter:**
+- `repository` (string, optional): GitHub Repository im Format 'owner/repo'
+- `issueNumber` (integer, **required**): Issue-Nummer zum Schließen
+- `reason` (string, optional): Grund für Schließung: 'completed' oder 'not_planned'
+- `comment` (string, optional): Kommentar vor dem Schließen hinzufügen
+
+**Rückgabe:**
+```json
+{
+  "success": true,
+  "message": "Issue successfully closed",
+  "issueNumber": 43,
+  "title": "Old issue",
+  "state": "closed",
+  "url": "https://github.com/owner/repo/issues/43",
+  "closedAt": "2026-01-15T12:00:00Z"
+}
+```
+
+**Beispiel:**
+```bash
+# Issue schließen mit Kommentar
+curl -X POST http://localhost:8081/api/tools/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "delete_github_issue",
+    "arguments": {
+      "repository": "owner/repo",
+      "issueNumber": 43,
+      "reason": "completed",
+      "comment": "This has been implemented in PR #50"
+    }
+  }'
+```
+
+---
+
 ## Installation
 
 ### 1. Abhängigkeiten hinzufügen (bereits erledigt)
@@ -416,7 +603,11 @@ tools/git/
 ├── ReadProjectFileTool.java      # Tool zum Dateilesen
 ├── ListProjectFilesTool.java     # Tool zum Dateiauflisten
 ├── GetGitLogTool.java            # Tool für Git-Log
-└── ListOpenPRsTool.java          # Tool für GitHub Pull Requests
+├── ListOpenPRsTool.java          # Tool für GitHub Pull Requests
+├── ListGitHubIssuesTool.java    # Tool zum Auflisten von Issues
+├── CreateGitHubIssueTool.java   # Tool zum Erstellen von Issues
+├── UpdateGitHubIssueTool.java   # Tool zum Bearbeiten von Issues
+└── DeleteGitHubIssueTool.java   # Tool zum Schließen von Issues
 ```
 
 ### Design Pattern
