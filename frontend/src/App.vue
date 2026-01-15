@@ -44,6 +44,12 @@
       >
         📚 RAG Library
       </button>
+      <button
+          @click="currentMode = 'support'"
+          :class="{ active: currentMode === 'support' }"
+      >
+        Support Chat
+      </button>
     </div>
 
     <!-- Component Display -->
@@ -54,6 +60,7 @@
     <DocumentUpload v-else-if="currentMode === 'rag-upload'" @navigate="handleNavigate" />
     <DocumentSearch v-else-if="currentMode === 'rag-search'" @navigate="handleNavigate" />
     <DocumentLibrary v-else-if="currentMode === 'rag-library'" @navigate="handleNavigate" />
+    <SupportChat v-else-if="currentMode === 'support'" @navigate="handleNavigate" />
   </div>
 </template>
 
@@ -66,8 +73,10 @@ import OpenRouterChat from './components/OpenRouterChat.vue';
 import DocumentUpload from './components/DocumentUpload.vue';
 import DocumentSearch from './components/DocumentSearch.vue';
 import DocumentLibrary from './components/DocumentLibrary.vue';
+import SupportChat from './components/SupportChat.vue';
 
-type Mode = 'normal' | 'meta' | 'reminder' | 'openrouter' | 'rag-upload' | 'rag-search' | 'rag-library';
+
+type Mode = 'normal' | 'meta' | 'reminder' | 'openrouter' | 'rag-upload' | 'rag-search' | 'rag-library' |  'support';
 const currentMode = ref<Mode>('normal');
 
 const handleNavigate = (mode: string) => {
