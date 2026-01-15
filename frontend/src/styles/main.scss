@@ -27,5 +27,8 @@
 // 7. OpenRouter Chat (специфичные стили)
 @use 'openrouter-chat';
 
-// 8. Overrides (переопределения и специфичные стили)
+// 8. Team Assistant Chat (специфичные стили)
+@use 'team-assistant-chat';
+
+// 9. Overrides (переопределения и специфичные стили)
 @use 'support-chat';

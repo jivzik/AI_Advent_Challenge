@@ -119,22 +119,29 @@ public class SupportChatService {
         // 1. Найти или создать пользователя
         SupportUser user = findOrCreateUser(request.getUserEmail());
 
-        // 2. Найти или создать тикет
-        SupportTicket ticket = findOrCreateTicket(request, user);
+        // 2. Найти существующий тикет (если указан номер)
+        SupportTicket ticket = null;
+        if (request.getTicketNumber() != null) {
+            ticket = ticketRepository.findByTicketNumber(request.getTicketNumber())
+                    .orElseThrow(() -> new RuntimeException("Ticket not found: " + request.getTicketNumber()));
 
-        // 3. Сохранить сообщение пользователя
-        saveUserMessage(ticket, user, request.getMessage());
+            // 3. Сохранить сообщение пользователя в существующий тикет
+            saveUserMessage(ticket, user, request.getMessage());
+        }
 
-        // 4. Если AI отключен - просто возвращаем тикет без ответа
+        // 4. Если AI отключен - создать тикет и вернуть ответ
         if (!aiEnabled) {
+            if (ticket == null) {
+                ticket = createTicket(request, user);
+            }
             return buildResponseWithoutAI(ticket);
         }
 
         // 5. Определить intent сообщения
         MessageIntent intent = detectIntent(request.getMessage());
 
-        // 6. Если это благодарность - простой ответ без RAG
-        if (intent == MessageIntent.GRATITUDE || intent == MessageIntent.ACKNOWLEDGMENT) {
+        // 6. Если это благодарность и тикет существует - простой ответ без RAG
+        if (ticket != null && (intent == MessageIntent.GRATITUDE || intent == MessageIntent.ACKNOWLEDGMENT)) {
             log.info("💬 Detected {} intent - simple response", intent);
 
             String simpleAnswer = generateGratitudeResponse();
@@ -159,32 +166,69 @@ public class SupportChatService {
                     .build();
         }
 
-        // 7. Построить сообщения с контекстом тикета (для вопросов)
-        List<Message> messages = buildMessagesWithTicketContext(ticket, request.getMessage());
+        // 7. Построить сообщения с контекстом пользователя (не тикета!)
+        List<Message> messages = buildMessagesWithUserContext(user, request, ticket);
 
-        // 8. Запустить tool execution loop
+        // 8. Clear thread local context vor dem tool loop
+        de.jivz.supportservice.service.orchestrator.ThreadLocalTicketContext.clear();
+
+        // 9. Запустить tool execution loop
         String aiAnswer = toolExecutionOrchestrator.executeToolLoop(messages, aiTemperature);
 
-        // 9. Извлечь источники из ответа
-        List<String> sources = extractSourcesFromAnswer(aiAnswer);
+        // 10. После AI-обработки проверить, был ли создан GitHub issue через tool
+        String createdTicketNumber = de.jivz.supportservice.service.orchestrator.ThreadLocalTicketContext.getTicketNumber();
+        String gitHubIssueUrl = de.jivz.supportservice.service.orchestrator.ThreadLocalTicketContext.getGitHubIssueUrl();
 
-        // 10. Определить confidence score
-        BigDecimal confidence = calculateConfidence(sources);
+        if (ticket == null && createdTicketNumber != null) {
+            // GitHub Issue был создан - создать соответствующий Ticket в БД
+            ticket = createTicketFromGitHubIssue(request, user, createdTicketNumber, gitHubIssueUrl);
+            log.info("🎫 Created ticket from GitHub issue: {} -> {}", createdTicketNumber, ticket.getTicketNumber());
+        }
 
-        // 11. Проверить эскалацию
-        boolean needsHuman = shouldEscalateToHuman(confidence, ticket, sources);
-        String escalationReason = needsHuman ? determineEscalationReason(confidence, ticket, sources) : null;
+        // 11. Clear context nach der Verwendung
+        de.jivz.supportservice.service.orchestrator.ThreadLocalTicketContext.clear();
 
-        // 12. Сохранить ответ AI
-        saveAIMessage(ticket, aiAnswer, sources, confidence);
+        // 12. Если тикет создан - сохранить ответ и обновить
+        if (ticket != null) {
+            // Сохранить начальное сообщение пользователя, если еще не сохранено
+            long msgCount = messageRepository.countByTicket(ticket);
+            if (msgCount == 0) {
+                saveUserMessage(ticket, user, request.getMessage());
+            }
 
-        // 13. Обновить статус тикета
-        updateTicketStatus(ticket, needsHuman);
+            // Извлечь источники из ответа
+            List<String> sources = extractSourcesFromAnswer(aiAnswer);
 
-        // 14. Построить ответ
-        return buildResponse(ticket, aiAnswer, sources, confidence, needsHuman, escalationReason);
+            // Определить confidence score
+            BigDecimal confidence = calculateConfidence(sources);
+
+            // Проверить эскалацию
+            boolean needsHuman = shouldEscalateToHuman(confidence, ticket, sources);
+            String escalationReason = needsHuman ? determineEscalationReason(confidence, ticket, sources) : null;
+
+            // Сохранить ответ AI
+            saveAIMessage(ticket, aiAnswer, sources, confidence);
+
+            // Обновить статус тикета
+            updateTicketStatus(ticket, needsHuman);
+
+            // Построить ответ
+            return buildResponse(ticket, aiAnswer, sources, confidence, needsHuman, escalationReason);
+        } else {
+            // Тикет не был создан - простой ответ без тикета
+            return SupportChatResponse.builder()
+                    .ticketNumber(null)
+                    .status("resolved")
+                    .answer(aiAnswer)
+                    .isAiGenerated(true)
+                    .confidenceScore(BigDecimal.valueOf(0.95))
+                    .sources(List.of())
+                    .needsHumanAgent(false)
+                    .timestamp(LocalDateTime.now())
+                    .messageCount(0)
+                    .build();
+        }
     }
-
 
     /**
      * Находит пользователя по email или создает нового
@@ -206,15 +250,9 @@ public class SupportChatService {
     }
 
     /**
-     * Находит существующий тикет или создает новый
+     * Создает новый тикет
      */
-    private SupportTicket findOrCreateTicket(SupportChatRequest request, SupportUser user) {
-        if (request.getTicketNumber() != null) {
-            return ticketRepository.findByTicketNumber(request.getTicketNumber())
-                    .orElseThrow(() -> new RuntimeException("Ticket not found: " + request.getTicketNumber()));
-        }
-
-        // Создать новый тикет
+    private SupportTicket createTicket(SupportChatRequest request, SupportUser user) {
         String ticketNumber = generateTicketNumber();
         log.info("🎫 Creating new ticket: {}", ticketNumber);
 
@@ -230,6 +268,41 @@ public class SupportChatService {
                 .productId(request.getProductId())
                 .errorCode(request.getErrorCode())
                 .build();
+
+        return ticketRepository.save(ticket);
+    }
+
+    /**
+     * Создает Ticket из GitHub Issue
+     */
+    private SupportTicket createTicketFromGitHubIssue(SupportChatRequest request, SupportUser user,
+                                                      String gitHubTicketNumber, String gitHubIssueUrl) {
+        String ticketNumber = generateTicketNumber();
+        log.info("🎫 Creating ticket from GitHub issue: {} -> {}", gitHubTicketNumber, ticketNumber);
+
+        SupportTicket ticket = SupportTicket.builder()
+                .ticketNumber(ticketNumber)
+                .user(user)
+                .subject(extractSubject(request.getMessage()))
+                .description(request.getMessage())
+                .category(request.getCategory() != null ? request.getCategory() : "other")
+                .priority(request.getPriority() != null ? request.getPriority() : "medium")
+                .status("open")
+                .orderId(request.getOrderId())
+                .productId(request.getProductId())
+                .errorCode(request.getErrorCode())
+                .build();
+
+        // Store GitHub Issue reference in metadata or external reference field
+        // You might need to add a field to SupportTicket entity for this
+        // For now, we'll add it to the description
+        if (gitHubIssueUrl != null) {
+            ticket.setDescription(
+                ticket.getDescription() +
+                "\n\n**GitHub Issue:** " + gitHubTicketNumber + "\n" +
+                "**URL:** " + gitHubIssueUrl
+            );
+        }
 
         return ticketRepository.save(ticket);
     }
@@ -292,40 +365,42 @@ public class SupportChatService {
     }
 
     /**
-     * Строит сообщения с контекстом тикета для AI
+     * Строит сообщения с контекстом пользователя и опционально тикета для AI
      */
-    private List<Message> buildMessagesWithTicketContext(SupportTicket ticket, String currentMessage) {
-        // Получить все MCP tools (включая RAG)
+    private List<Message> buildMessagesWithUserContext(SupportUser user, SupportChatRequest request, SupportTicket ticket) {
+        // Получить все MCP tools (включая RAG и ticket creation)
         List<ToolDefinition> tools = mcpFactory.getAllToolDefinitions();
 
         // Построить сообщения
         List<Message> messages = new ArrayList<>();
 
-        // 1. System prompt с контекстом тикета
-        String systemPrompt = buildSystemPromptWithTicketContext(ticket, tools);
+        // 1. System prompt с контекстом
+        String systemPrompt = buildSystemPromptWithUserContext(user, request, ticket, tools);
         messages.add(new Message("system", systemPrompt));
 
-        // 2. История тикета (последние 5 сообщений)
-        List<TicketMessage> history = messageRepository.findByTicketOrderByCreatedAtAsc(ticket);
-        int startIndex = Math.max(0, history.size() - 5);
+        // 2. История тикета (если тикет существует)
+        if (ticket != null) {
+            List<TicketMessage> history = messageRepository.findByTicketOrderByCreatedAtAsc(ticket);
+            int startIndex = Math.max(0, history.size() - 5);
 
-        for (int i = startIndex; i < history.size() - 1; i++) { // -1 чтобы не включать текущее
-            TicketMessage msg = history.get(i);
-            String role = msg.getSenderType().equals("customer") ? "user" : "assistant";
-            messages.add(new Message(role, msg.getMessage()));
+            for (int i = startIndex; i < history.size(); i++) {
+                TicketMessage msg = history.get(i);
+                String role = msg.getSenderType().equals("customer") ? "user" : "assistant";
+                messages.add(new Message(role, msg.getMessage()));
+            }
         }
 
         // 3. Текущее сообщение
-        messages.add(new Message("user", currentMessage));
+        messages.add(new Message("user", request.getMessage()));
 
-        log.info("📝 Built {} messages for support chat (including ticket context)", messages.size());
+        log.info("📝 Built {} messages for support chat", messages.size());
         return messages;
     }
 
     /**
-     * Строит system prompt с контекстом тикета и инструкцией использовать RAG
+     * Строит system prompt с контекстом пользователя, запроса и опционально тикета
      */
-    private String buildSystemPromptWithTicketContext(SupportTicket ticket, List<ToolDefinition> tools) {
+    private String buildSystemPromptWithUserContext(SupportUser user, SupportChatRequest request, SupportTicket ticket, List<ToolDefinition> tools) {
         StringBuilder prompt = new StringBuilder();
 
         // Базовый support assistant prompt
@@ -338,39 +413,58 @@ public class SupportChatService {
         String toolsPrompt = promptLoader.buildSystemPromptWithTools(tools);
         prompt.append(toolsPrompt).append("\n\n");
 
-        // Добавить контекст тикета
-        prompt.append("## CURRENT TICKET CONTEXT:\n");
-        prompt.append(String.format("- Ticket Number: %s\n", ticket.getTicketNumber()));
-        prompt.append(String.format("- Category: %s\n", ticket.getCategory()));
-        prompt.append(String.format("- Priority: %s\n", ticket.getPriority()));
-        prompt.append(String.format("- Status: %s\n", ticket.getStatus()));
-        prompt.append(String.format("- User: %s (Email: %s, Loyalty: %s)\n",
-                ticket.getUser().getFullName(),
-                ticket.getUser().getEmail(),
-                ticket.getUser().getLoyaltyTier()));
+        // Добавить контекст пользователя
+        prompt.append("## USER CONTEXT:\n");
+        prompt.append(String.format("- User Email: %s\n", user.getEmail()));
+        prompt.append(String.format("- User Name: %s\n", user.getFullName()));
+        prompt.append(String.format("- Company: %s\n", user.getCompanyName()));
+        prompt.append(String.format("- Loyalty Tier: %s\n", user.getLoyaltyTier()));
+        prompt.append(String.format("- Verified: %s\n", user.getIsVerified() ? "Yes" : "No"));
 
-        if (ticket.getOrderId() != null) {
-            prompt.append(String.format("- Related Order: %s\n", ticket.getOrderId()));
+        // Добавить контекст запроса
+        if (request.getCategory() != null) {
+            prompt.append(String.format("- Request Category: %s\n", request.getCategory()));
         }
-        if (ticket.getProductId() != null) {
-            prompt.append(String.format("- Related Product: %s\n", ticket.getProductId()));
+        if (request.getPriority() != null) {
+            prompt.append(String.format("- Request Priority: %s\n", request.getPriority()));
         }
-        if (ticket.getErrorCode() != null) {
-            prompt.append(String.format("- Error Code: %s\n", ticket.getErrorCode()));
+        if (request.getOrderId() != null) {
+            prompt.append(String.format("- Related Order: %s\n", request.getOrderId()));
+        }
+        if (request.getProductId() != null) {
+            prompt.append(String.format("- Related Product: %s\n", request.getProductId()));
+        }
+        if (request.getErrorCode() != null) {
+            prompt.append(String.format("- Error Code: %s\n", request.getErrorCode()));
         }
 
-        // Инструкция использовать RAG для поиска в FAQ
-        prompt.append("\n## IMPORTANT INSTRUCTION:\n");
-        prompt.append("**ALWAYS** use the `rag:search_documents` tool to search the FAQ knowledge base before answering.\n");
-        prompt.append("The FAQ contains detailed information about:\n");
-        prompt.append("- Authorization and authentication issues\n");
-        prompt.append("- Catalog and pricing questions\n");
+        // Добавить контекст тикета (если существует)
+        if (ticket != null) {
+            prompt.append("\n## EXISTING TICKET CONTEXT:\n");
+            prompt.append(String.format("- Ticket Number: %s\n", ticket.getTicketNumber()));
+            prompt.append(String.format("- Status: %s\n", ticket.getStatus()));
+            prompt.append(String.format("- Subject: %s\n", ticket.getSubject()));
+            prompt.append("This is a continuation of an existing conversation.\n");
+        } else {
+            prompt.append("\n## NEW REQUEST:\n");
+            prompt.append("This is a new support request. Assess if a support ticket needs to be created.\n");
+        }
+
+        // Инструкция использовать RAG für поиска в FAQ
+        prompt.append("\n## IMPORTANT INSTRUCTIONS:\n");
+        prompt.append("1. **ALWAYS** use the `rag:search_documents` tool to search the FAQ knowledge base first.\n");
+        prompt.append("2. **Decide if a GitHub issue is needed**: If the issue is complex, requires human review, or cannot be resolved from FAQ, use the `git:create_github_issue` tool to create a GitHub issue as support ticket.\n");
+        prompt.append("3. **Simple questions**: If you can fully answer from FAQ, provide the answer directly without creating an issue.\n");
+        prompt.append("4. **GitHub issue criteria**: Create issue for: critical issues, billing problems, account issues, complex technical problems, escalations.\n");
+        prompt.append("5. **Issue format**: When creating GitHub issue, use clear title and detailed body. Add labels like 'support', 'bug', 'question' as appropriate.\n");
+        prompt.append("\nThe FAQ contains information about:\n");
+        prompt.append("- Authorization and authentication\n");
+        prompt.append("- Catalog and pricing\n");
         prompt.append("- Order processing and tracking\n");
         prompt.append("- Payment and billing\n");
         prompt.append("- Delivery and shipping\n");
         prompt.append("- Returns and exchanges\n");
-        prompt.append("- API integration\n\n");
-        prompt.append("Search the FAQ first, then provide a helpful answer based on the information found.\n");
+        prompt.append("- API integration\n");
 
         return prompt.toString();
     }

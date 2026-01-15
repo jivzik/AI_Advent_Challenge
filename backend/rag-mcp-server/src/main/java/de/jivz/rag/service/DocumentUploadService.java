@@ -1,6 +1,7 @@
 package de.jivz.rag.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.jivz.rag.dto.DocumentDto;
 import de.jivz.rag.repository.entity.Document;
@@ -15,7 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map;
 
 /**
@@ -52,10 +55,24 @@ public class DocumentUploadService {
      */
     @Transactional
     public DocumentDto uploadDocument(MultipartFile file) throws IOException {
-        String fileName = file.getOriginalFilename();
-        log.info("Uploading document: {}", fileName);
+        return uploadDocument(file, null);
+    }
 
-        Document document = createDocumentRecord(file);
+    /**
+     * Загружает и обрабатывает документ с метаданными.
+     *
+     * @param file загружаемый файл
+     * @param metadataJson метаданные в формате JSON-строки (может быть null)
+     * @return DTO загруженного документа
+     * @throws IOException при ошибке чтения файла
+     */
+    @Transactional
+    public DocumentDto uploadDocument(MultipartFile file, String metadataJson) throws IOException {
+        String fileName = file.getOriginalFilename();
+        log.info("Uploading document: {} with metadata: {}", fileName, metadataJson);
+
+        Map<String, Object> metadata = parseMetadata(metadataJson);
+        Document document = createDocumentRecord(file, metadata);
 
         try {
             processDocument(file, document);
@@ -66,16 +83,30 @@ public class DocumentUploadService {
         }
     }
 
-    private Document createDocumentRecord(MultipartFile file) {
+    private Map<String, Object> parseMetadata(String metadataJson) {
+        if (metadataJson == null || metadataJson.trim().isEmpty()) {
+            return new HashMap<>();
+        }
+
+        try {
+            return objectMapper.readValue(metadataJson, new TypeReference<Map<String, Object>>() {});
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to parse metadata JSON: {}, using empty map", metadataJson);
+            return new HashMap<>();
+        }
+    }
+
+    private Document createDocumentRecord(MultipartFile file, Map<String, Object> metadata) {
         Document document = Document.builder()
                 .fileName(file.getOriginalFilename())
                 .fileType(parserService.getFileType(file.getOriginalFilename()))
                 .fileSize(file.getSize())
+                .metadata(metadata)
                 .status(DocumentStatus.PROCESSING)
                 .build();
 
         document = documentRepository.save(document);
-        log.debug("Created document record: id={}", document.getId());
+        log.debug("Created document record: id={}, metadata={}", document.getId(), metadata);
         return document;
     }
 

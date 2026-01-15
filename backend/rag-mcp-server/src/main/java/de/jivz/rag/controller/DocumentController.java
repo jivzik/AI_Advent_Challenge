@@ -32,11 +32,15 @@ public class DocumentController {
      *
      * POST /api/documents/upload
      * Content-Type: multipart/form-data
+     * @param file загружаемый файл
+     * @param metadata опциональные метаданные в формате JSON-строки
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadDocument(@RequestParam("file") MultipartFile file) {
-        log.info("📥 Received upload request: {} ({} bytes)",
-                file.getOriginalFilename(), file.getSize());
+    public ResponseEntity<?> uploadDocument(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "metadata", required = false) String metadata) {
+        log.info("📥 Received upload request: {} ({} bytes), metadata: {}",
+                file.getOriginalFilename(), file.getSize(), metadata);
 
         if (file.isEmpty()) {
             return ResponseEntity.badRequest()
@@ -44,7 +48,7 @@ public class DocumentController {
         }
 
         try {
-            DocumentDto doc = ragFacade.uploadDocument(file);
+            DocumentDto doc = ragFacade.uploadDocument(file, metadata);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "document", doc,
@@ -82,6 +86,30 @@ public class DocumentController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(doc.get());
+    }
+
+    /**
+     * Обновить метаданные документа.
+     *
+     * PATCH /api/documents/{id}/metadata
+     */
+    @PatchMapping("/{id}/metadata")
+    public ResponseEntity<?> updateMetadata(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> metadata) {
+        log.info("📝 Update metadata for document id={}: {}", id, metadata);
+
+        try {
+            DocumentDto doc = ragFacade.updateDocumentMetadata(id, metadata);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "document", doc,
+                    "message", "Metadata updated successfully"
+            ));
+        } catch (Exception e) {
+            log.error("❌ Failed to update metadata: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
     }
 
     /**

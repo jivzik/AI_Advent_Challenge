@@ -6,6 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Entity для хранения информации о загруженном документе.
@@ -35,6 +36,10 @@ public class Document {
     @Column(name = "chunk_count")
     @Builder.Default
     private Integer chunkCount = 0;
+
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    private Map<String, Object> metadata;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
@@ -66,4 +71,3 @@ public class Document {
         this.updatedAt = LocalDateTime.now();
     }
 }
-

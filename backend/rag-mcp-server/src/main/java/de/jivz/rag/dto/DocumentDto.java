@@ -4,9 +4,10 @@ import de.jivz.rag.repository.entity.Document;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
- * DTO для информации о документе.
+ * DTO für информации о документе.
  */
 @Data
 @NoArgsConstructor
@@ -20,6 +21,7 @@ public class DocumentDto {
     private Long fileSize;
     private Integer chunkCount;
     private String status;
+    private Map<String, Object> metadata;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -31,9 +33,9 @@ public class DocumentDto {
                 .fileSize(doc.getFileSize())
                 .chunkCount(doc.getChunkCount())
                 .status(doc.getStatus().name())
+                .metadata(doc.getMetadata())
                 .createdAt(doc.getCreatedAt())
                 .updatedAt(doc.getUpdatedAt())
                 .build();
     }
 }
-

@@ -25,6 +25,7 @@ export interface Document {
   fileSize: number;
   chunkCount: number;
   status: string;
+  metadata?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,7 +80,11 @@ class RagDocumentService {
   /**
    * Upload and index a document
    */
-  async uploadDocument(file: File, settings?: ChunkingSettings): Promise<IndexResponse> {
+  async uploadDocument(
+    file: File,
+    settings?: ChunkingSettings,
+    metadata?: Record<string, any>
+  ): Promise<IndexResponse> {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -87,6 +92,10 @@ class RagDocumentService {
       formData.append('chunkSize', settings.chunkSize.toString());
       formData.append('overlap', settings.overlapSize.toString());
       formData.append('strategy', settings.strategy);
+    }
+
+    if (metadata) {
+      formData.append('metadata', JSON.stringify(metadata));
     }
 
     const response = await fetch(`${RAG_API_URL}/index/document`, {
@@ -152,6 +161,24 @@ class RagDocumentService {
     if (!response.ok) {
       throw new Error('Failed to delete document');
     }
+  }
+
+  /**
+   * Update document metadata
+   */
+  async updateDocumentMetadata(id: string, metadata: Record<string, any>): Promise<Document> {
+    const response = await fetch(`${RAG_API_URL}/documents/${id}/metadata`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(metadata),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update metadata');
+    }
+
+    const data = await response.json();
+    return data.document;
   }
 
   /**

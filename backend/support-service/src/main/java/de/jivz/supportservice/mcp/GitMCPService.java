@@ -1,7 +1,6 @@
 package de.jivz.supportservice.mcp;
 
 
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,7 +14,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Slf4j
 public class GitMCPService extends BaseMCPService {
 
-    public GitMCPService(            @Value("${mcp.google.base-url:http://localhost:3001}") String baseUrl) {
+    public GitMCPService(@Value("${mcp.google.base-url:http://localhost:3001}") String baseUrl) {
 
         super(WebClient.create(baseUrl), "git");
 
