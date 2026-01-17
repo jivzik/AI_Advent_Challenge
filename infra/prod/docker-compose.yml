@@ -229,7 +229,6 @@ services:
     depends_on:
       - frontend
       - mcp-server
-      - google-service
       - openrouter-service
       - rag-mcp-server
       - support-service
