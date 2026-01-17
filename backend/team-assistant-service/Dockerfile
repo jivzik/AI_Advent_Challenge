@@ -6,16 +6,17 @@ FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 WORKDIR /build
 
 # Copy parent pom first
-COPY ../../pom.xml ../pom.xml
+COPY pom.xml ./pom.xml
 
 # Copy service pom
-COPY pom.xml .
+COPY backend/team-assistant-service/pom.xml ./backend/team-assistant-service/pom.xml
 
 # Download dependencies
+WORKDIR /build/backend/team-assistant-service
 RUN mvn dependency:go-offline -B || true
 
 # Copy source code
-COPY src ./src
+COPY backend/team-assistant-service/src ./src
 
 # Build JAR
 RUN mvn clean package -DskipTests -B

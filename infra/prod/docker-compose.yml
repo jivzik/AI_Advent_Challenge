@@ -66,8 +66,8 @@ services:
   # ==================================
   openrouter-service:
     build:
-      context: ../../backend/openrouter-service
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/openrouter-service/Dockerfile
     image: ai-openrouter-service:latest
     container_name: ai-openrouter-service
     restart: unless-stopped
@@ -134,8 +134,8 @@ services:
   # ==================================
   support-service:
     build:
-      context: ../../backend/support-service
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/support-service/Dockerfile
     image: ai-support-service:latest
     container_name: ai-support-service
     restart: unless-stopped

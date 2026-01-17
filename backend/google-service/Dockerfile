@@ -6,16 +6,17 @@ FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 WORKDIR /build
 
 # Copy parent pom first
-COPY ../../pom.xml ../pom.xml
+COPY pom.xml ./pom.xml
 
 # Copy service pom
-COPY pom.xml .
+COPY backend/google-service/pom.xml ./backend/google-service/pom.xml
 
 # Download dependencies
+WORKDIR /build/backend/google-service
 RUN mvn dependency:go-offline -B || true
 
 # Copy source code
-COPY src ./src
+COPY backend/google-service/src ./src
 
 # Build JAR
 RUN mvn clean package -DskipTests -B
