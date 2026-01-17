@@ -52,6 +52,16 @@ An enterprise-grade AI chat platform that integrates multiple AI providers (Open
 - **Keyword Search**: PostgreSQL FTS with morphology
 - 📖 [Search Guide](docs/features/FULL_TEXT_SEARCH_GUIDE.md)
 
+## 🎨 Design Guidelines
+
+📖 **[Design Guidelines](DESIGN_GUIDELINES.md)** - Comprehensive coding standards and design patterns  
+⚡ **[Quick Reference](DESIGN_QUICK_REFERENCE.md)** - Fast lookup for colors, spacing, and conventions
+
+- **Backend:** Java/Spring Boot best practices with Lombok
+- **Frontend:** Vue 3 Composition API + TypeScript patterns
+- **UI/UX:** SCSS variables, mixins, and component guidelines
+- **Naming:** Consistent conventions across the stack
+
 ## 🏗️ Architecture
 
 ### Backend Services
