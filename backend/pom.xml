@@ -25,6 +25,8 @@
         <module>openrouter-service</module>
         <module>rag-mcp-server</module>
         <module>agent-service</module>
+        <module>team-assistant-service</module>
+        <module>support-service</module>
     </modules>
 
 
