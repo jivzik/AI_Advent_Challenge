@@ -207,7 +207,7 @@ services:
     container_name: ai-frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3300:80"
     networks:
       - frontend
     healthcheck:
