@@ -1,2 +1,88 @@
+name: CI/CD to OMV Server
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
 env:
-  PROJECT_DIR: /srv/dev-disk-by-uuid-209cfe75-5f16-45e1-9e4a-ed4ac6b32755/appdata/ai-services
+  PROJECT_DIR: /srv/dev-disk-by-uuid-209cfe75-5f16-45e1-9e4a-ed4ac6b32755/appdata/ai-services/AI_Advent_Challenge
+  COMPOSE_FILE: infra/localdev/docker-compose.yml
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: self-hosted
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📝 Create .env file
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          cat > .env << EOF
+          POSTGRES_DB=ai_memory
+          POSTGRES_USER=ai_user
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          SPRING_PROFILES_ACTIVE=prod
+          OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+          EOF
+          echo "✅ .env file created"
+
+      - name: 💾 Backup database
+        working-directory: ${{ env.PROJECT_DIR }}
+        continue-on-error: true
+        run: |
+          if docker ps -q -f name=postgres; then
+            echo "📦 Creating database backup..."
+            docker exec postgres pg_dump -U ai_user ai_memory > backup_$(date +%Y%m%d_%H%M%S).sql
+            echo "✅ Backup created"
+          else
+            echo "⚠️  Database not running, skipping backup"
+          fi
+
+      - name: 🔨 Build Docker images
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "🏗️  Building images..."
+          docker compose -f ${{ env.COMPOSE_FILE }} build --no-cache
+          echo "✅ Images built successfully"
+
+      - name: 🛑 Stop old containers
+        working-directory: ${{ env.PROJECT_DIR }}
+        continue-on-error: true
+        run: |
+          echo "⏹️  Stopping old containers..."
+          docker compose -f ${{ env.COMPOSE_FILE }} down
+          echo "✅ Old containers stopped"
+
+      - name: 🚀 Start new containers
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "🔄 Starting new containers..."
+          docker compose -f ${{ env.COMPOSE_FILE }} up -d
+          echo "✅ Containers started"
+
+      - name: ⏳ Wait for services to be healthy
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "⏳ Waiting for services to start..."
+          sleep 30
+          docker compose -f ${{ env.COMPOSE_FILE }} ps
+          echo "✅ Services started!"
+
+      - name: 🧹 Cleanup old images
+        continue-on-error: true
+        run: |
+          echo "🧹 Cleaning up old Docker images..."
+          docker image prune -f
+          echo "✅ Cleanup completed"
+
+      - name: 📊 Show container status
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "📊 Container Status:"
+          docker compose -f ${{ env.COMPOSE_FILE }} ps
