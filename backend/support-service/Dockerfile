@@ -31,7 +31,7 @@ RUN addgroup -S spring && adduser -S spring -G spring
 WORKDIR /app
 
 # Copy JAR from builder
-COPY --from=builder /build/target/*.jar app.jar
+COPY --from=builder /build/backend/support-service/target/*.jar app.jar
 
 # Change ownership
 RUN chown -R spring:spring /app

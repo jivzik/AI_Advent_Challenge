@@ -100,8 +100,8 @@ services:
   # ==================================
   rag-mcp-server:
     build:
-      context: ../../backend/rag-mcp-server
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/rag-mcp-server/Dockerfile
     image: ai-rag-mcp-server:latest
     container_name: ai-rag-mcp-server
     restart: unless-stopped
@@ -168,8 +168,8 @@ services:
   # ==================================
   team-assistant-service:
     build:
-      context: ../../backend/team-assistant-service
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/team-assistant-service/Dockerfile
     image: ai-team-assistant-service:latest
     container_name: ai-team-assistant-service
     restart: unless-stopped
