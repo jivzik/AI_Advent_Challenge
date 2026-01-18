@@ -14,7 +14,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Slf4j
 public class GitMCPService extends BaseMCPService {
 
-    public GitMCPService(            @Value("${mcp.google.base-url:http://localhost:3001}") String baseUrl) {
+    public GitMCPService(@Value("${mcp.google.base-url:http://localhost:3001}") String baseUrl) {
 
         super(WebClient.create(baseUrl), "git");
 

@@ -1,0 +1,129 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    🎨 DESIGN GUIDELINES SUMMARY                              ║
+║                     AI Advent Challenge Projekt                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+📚 VERFÜGBARE DOKUMENTATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ DESIGN_GUIDELINES.md
+   → Vollständige Design- und Coding-Standards
+   → Backend (Java/Spring Boot) Best Practices
+   → Frontend (Vue 3/TypeScript) Patterns
+   → UI/UX Design System mit SCSS
+   → Naming Conventions für alle Technologien
+⚡ DESIGN_QUICK_REFERENCE.md
+   → Schnellübersicht für häufig verwendete Werte
+   → Farben, Spacing, Schatten
+   → Code-Snippets für Java & Vue
+   → Checkliste für Code-Review
+📋 VORHANDENE STYLE-GUIDES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 backend/openrouter-service/src/main/resources/prompts/developer-code-style.md
+   → Detaillierter Backend-Code-Style (1017 Zeilen)
+   → Java/Spring Boot Beispiele
+   → TypeScript/Vue 3 Patterns
+   → Bash Script Guidelines
+📄 docs/development/Frontend_prompt.md
+   → Frontend Component Guidelines
+   → Chat Interface Designs
+   → Metadata Display Patterns
+   → UI/UX Layout Specifications
+📁 frontend/src/styles/
+   ├── _variables.scss    → Farben, Spacing, Typography
+   ├── _mixins.scss       → Wiederverwendbare SCSS-Patterns
+   ├── _components.scss   → Component-spezifische Styles
+   └── main.scss          → Import aller Styles
+🎨 DESIGN-SYSTEM KERN-ELEMENTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 FARBEN:
+   Primary:    #667eea (Blau-Violett)
+   Gradient:   135deg, #667eea → #764ba2
+   Success:    #4caf50 (Grün)
+   Text Dark:  #2c3e50
+   Text Muted: #666
+📏 SPACING:
+   xs: 4px   sm: 8px   md: 16px   lg: 24px   xl: 32px
+🔄 BORDER RADIUS:
+   sm: 4px   md: 8px   lg: 16px   full: 32px (Buttons)
+🌑 SCHATTEN:
+   shadow-sm:      0 2px 5px rgba(0,0,0,0.1)
+   shadow-primary: 0 2px 8px rgba(102,126,234,0.3)
+☕ JAVA QUICK TIPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ IMMER VERWENDEN:
+   @Slf4j              // Logging mit log.info(), log.error()
+   @Data               // Getters/Setters/toString
+   @Builder            // Builder pattern für DTOs
+   @Service            // Service-Layer-Klassen
+   @RestController     // REST API Controller
+✅ CONSTRUCTOR INJECTION (bevorzugt):
+   @Service
+   public class MyService {
+       private final MyRepository repo;
+       public MyService(MyRepository repo) {
+           this.repo = repo;
+       }
+   }
+❌ VERMEIDE FIELD INJECTION:
+   @Autowired
+   private MyRepository repo; // BAD!
+🎨 VUE 3 QUICK TIPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ COMPOSITION API (immer <script setup lang="ts">):
+   <script setup lang="ts">
+   import { ref, computed } from 'vue'
+   const count = ref(0)
+   const doubled = computed(() => count.value * 2)
+   </script>
+✅ SCSS IN COMPONENTS:
+   <style scoped lang="scss">
+   @use '@/styles/variables' as *;
+   @use '@/styles/mixins' as *;
+   .component {
+       @include flex-center;
+       color: $primary-color;
+   }
+   </style>
+🏷️ NAMING CONVENTIONS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+JAVA:
+   Classes:    ChatService, OpenRouterClient (PascalCase)
+   Methods:    processChat(), validateRequest() (camelCase)
+   Variables:  userId, conversationId (camelCase)
+   Constants:  MAX_RETRIES, API_TIMEOUT (UPPER_SNAKE_CASE)
+TYPESCRIPT/VUE:
+   Components: ChatInterface.vue, MessageItem.vue (PascalCase)
+   Functions:  sendMessage(), formatDate() (camelCase)
+   Types:      ChatRequest, Message (PascalCase)
+   Files:      chat-service.ts, dev-assistant.vue (kebab-case)
+✅ CODE-QUALITÄT CHECKLIST:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ☐ Lombok Annotationen verwendet (@Slf4j, @Builder)
+  ☐ Constructor Injection (nicht Field Injection)
+  ☐ Logging für wichtige Operationen hinzugefügt
+  ☐ Error Handling implementiert (try-catch)
+  ☐ Input-Validierung vorhanden
+  ☐ TypeScript Types definiert
+  ☐ SCSS Variables verwendet (nicht hardcoded)
+  ☐ Naming Conventions befolgt
+  ☐ Kommentare für komplexe Logik
+  ☐ Keine hardcoded Werte (Configuration verwenden)
+📖 WO FINDE ICH WAS?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Backend Patterns:         → DESIGN_GUIDELINES.md (Abschnitt: Backend)
+Frontend Patterns:        → DESIGN_GUIDELINES.md (Abschnitt: Frontend)
+UI/UX Design System:      → DESIGN_GUIDELINES.md (Abschnitt: UI/UX)
+Schnellübersicht:         → DESIGN_QUICK_REFERENCE.md
+SCSS Variablen:           → frontend/src/styles/_variables.scss
+SCSS Mixins:              → frontend/src/styles/_mixins.scss
+Component Prompts:        → docs/development/Frontend_prompt.md
+Vollständiger Code-Style: → backend/.../developer-code-style.md
+🚀 NÄCHSTE SCHRITTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Lies DESIGN_GUIDELINES.md für vollständiges Verständnis
+2. Nutze DESIGN_QUICK_REFERENCE.md beim Coden
+3. Überprüfe _variables.scss für verfügbare SCSS-Werte
+4. Folge den Naming Conventions in deinem Code
+5. Nutze die Checklist vor jedem Commit
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  💡 TIPP: Halte diese Guidelines aktuell, wenn neue Patterns hinzukommen!   ║
+╚══════════════════════════════════════════════════════════════════════════════╝

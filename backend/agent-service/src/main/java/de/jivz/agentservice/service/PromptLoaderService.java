@@ -28,7 +28,7 @@ import java.util.Map;
  */
 @Service
 @Slf4j
-public class PromptLoaderService {
+public class  PromptLoaderService {
 
     private final ObjectMapper objectMapper;
     private final Map<String, String> promptCache = new HashMap<>();
