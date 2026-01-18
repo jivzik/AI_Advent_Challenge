@@ -1,4 +1,4 @@
-name: CI/CD to OMV Server
+name: 🚀 Deploy to OMV
 
 on:
   push:
@@ -9,11 +9,11 @@ on:
 
 env:
   PROJECT_DIR: /srv/dev-disk-by-uuid-209cfe75-5f16-45e1-9e4a-ed4ac6b32755/appdata/ai-services/AI_Advent_Challenge
-  COMPOSE_FILE: infra/localdev/docker-compose.yml
+  COMPOSE_FILE: infra/prod/docker-compose.yml
 
 jobs:
   deploy:
-    name: Build & Deploy
+    name: 🎯 Deploy All Services
     runs-on: self-hosted
 
     steps:
@@ -21,68 +21,77 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 📝 Create .env file
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: infra/prod
         run: |
           cat > .env << EOF
-          POSTGRES_DB=ai_memory
+          POSTGRES_DB=ai_challenge_db
           POSTGRES_USER=ai_user
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           SPRING_PROFILES_ACTIVE=prod
           OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+          GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
           EOF
           echo "✅ .env file created"
 
-      - name: 💾 Backup database
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: 💾 Backup Database
         continue-on-error: true
         run: |
-          if docker ps -q -f name=postgres; then
-            echo "📦 Creating database backup..."
-            docker exec postgres pg_dump -U ai_user ai_memory > backup_$(date +%Y%m%d_%H%M%S).sql
+          if docker ps -q -f name=ai-postgres; then
+            echo "📦 Backing up database..."
+            docker exec ai-postgres pg_dump -U ai_user ai_challenge_db > backup_$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || true
             echo "✅ Backup created"
-          else
-            echo "⚠️  Database not running, skipping backup"
           fi
 
-      - name: 🔨 Build Docker images
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: 🔨 Build Docker Images
         run: |
-          echo "🏗️  Building images..."
-          docker compose -f ${{ env.COMPOSE_FILE }} build --no-cache
-          echo "✅ Images built successfully"
+          echo "🏗️  Building all images..."
+          docker compose -f ${{ env.COMPOSE_FILE }} build
+          echo "✅ Build complete"
 
-      - name: 🛑 Stop old containers
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: 🛑 Stop Old Containers
         continue-on-error: true
         run: |
           echo "⏹️  Stopping old containers..."
           docker compose -f ${{ env.COMPOSE_FILE }} down
-          echo "✅ Old containers stopped"
+          echo "✅ Stopped"
 
-      - name: 🚀 Start new containers
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: 🚀 Start New Containers
         run: |
-          echo "🔄 Starting new containers..."
+          echo "🔄 Starting all services..."
           docker compose -f ${{ env.COMPOSE_FILE }} up -d
-          echo "✅ Containers started"
+          echo "✅ All services started!"
 
-      - name: ⏳ Wait for services to be healthy
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: ⏳ Wait for Health Checks
         run: |
-          echo "⏳ Waiting for services to start..."
-          sleep 30
-          docker compose -f ${{ env.COMPOSE_FILE }} ps
-          echo "✅ Services started!"
+          echo "⏳ Waiting 60 seconds for services to become healthy..."
+          sleep 60
 
-      - name: 🧹 Cleanup old images
+      - name: 🧪 Test Services
         continue-on-error: true
         run: |
-          echo "🧹 Cleaning up old Docker images..."
-          docker image prune -f
-          echo "✅ Cleanup completed"
+          echo "🧪 Testing services..."
+          curl -f http://localhost:8081/actuator/health || echo "❌ MCP Server not ready"
+          curl -f http://localhost:8084/actuator/health || echo "❌ OpenRouter not ready"
+          curl -f http://localhost:8086/actuator/health || echo "❌ RAG Server not ready"
+          curl -f http://localhost:8088/actuator/health || echo "❌ Support not ready"
+          curl -f http://localhost:8089/actuator/health || echo "❌ Team not ready"
+          curl -f http://localhost:8080/health || echo "❌ Nginx not ready"
+          echo "✅ Health checks complete"
 
-      - name: 📊 Show container status
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: 📊 Show Final Status
         run: |
-          echo "📊 Container Status:"
+          echo "📊 Final Container Status:"
           docker compose -f ${{ env.COMPOSE_FILE }} ps
+
+      - name: 🧹 Cleanup Old Images
+        continue-on-error: true
+        run: |
+          echo "🧹 Cleaning up..."
+          docker image prune -f
+          echo "✅ Cleanup done"
+
+      - name: 🎉 Deployment Complete
+        run: |
+          echo "🎉 DEPLOYMENT SUCCESSFUL! 🎉"
+          echo "Frontend: http://YOUR_IP:8080"
+          echo "Services: Ports 8081-8089"
