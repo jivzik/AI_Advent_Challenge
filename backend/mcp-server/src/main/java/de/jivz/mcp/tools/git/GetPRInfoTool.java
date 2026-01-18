@@ -24,10 +24,10 @@ public class GetPRInfoTool implements Tool {
 
     private static final String NAME = "get_pr_info";
 
-    @Value("${github.token}")
+    @Value("${personal.github.token}")
     private String githubToken;
 
-    @Value("${github.repository}")
+    @Value("${personal.github.repository}")
     private String defaultRepository;
 
     @Override

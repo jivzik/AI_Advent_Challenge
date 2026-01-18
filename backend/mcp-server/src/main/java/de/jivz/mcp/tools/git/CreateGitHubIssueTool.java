@@ -22,10 +22,10 @@ public class CreateGitHubIssueTool implements Tool {
 
     private static final String NAME = "create_github_issue";
 
-    @Value("${github.token}")
+    @Value("${personal.github.token}")
     private String githubToken;
 
-    @Value("${github.repository}")
+    @Value("${personal.github.repository}")
     private String defaultRepository;
 
     @Override
