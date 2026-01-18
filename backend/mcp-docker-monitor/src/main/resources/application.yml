@@ -2,6 +2,11 @@ spring.application.name: mcp-docker-monitor
 spring.profiles.active: dev
 server.port: 8083
 
+# Actuator endpoints
+management.endpoints.web.exposure.include: health,info
+management.endpoint.health.show-details: always
+management.health.defaults.enabled: true
+
 # SSH Configuration (Apache MINA SSHD - supports ED25519, RSA SHA256+, OpenSSH format)
 ssh.host: ${SSH_HOST:localhost}                    # Хост удаленного сервера
 ssh.port: ${SSH_PORT:22}                                # SSH порт
