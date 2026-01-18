@@ -2,6 +2,7 @@ package de.jivz.agentservice.cli.executor;
 
 import de.jivz.agentservice.cli.domain.Command;
 import de.jivz.agentservice.cli.domain.CommandResult;
+import de.jivz.agentservice.cli.service.CLIStateService;
 import de.jivz.agentservice.client.GitHubActionsClient;
 import de.jivz.agentservice.dto.Message;
 import de.jivz.agentservice.dto.github.GitHubCommit;
@@ -24,6 +25,7 @@ public class ReleaseNotesExecutor implements CommandExecutor {
 
     private final GitHubActionsClient githubClient;
     private final OpenRouterApiClient openRouterApiClient;
+    private final CLIStateService cliStateService;
 
     private static final int COMMIT_LIMIT = 30;
 
@@ -70,7 +72,12 @@ public class ReleaseNotesExecutor implements CommandExecutor {
         );
 
         return Mono.fromCallable(() -> openRouterApiClient.sendChatRequest(messages, 0.3, 1000))
-            .map(this::formatReleaseNotes);
+            .map(this::formatReleaseNotes)
+            .doOnNext(notes -> {
+                // Save generated notes for create release command
+                cliStateService.saveReleaseNotes(notes);
+                log.debug("Saved release notes for create release command");
+            });
     }
 
     private String buildPrompt(String commitSummary) {
@@ -110,4 +117,3 @@ public class ReleaseNotesExecutor implements CommandExecutor {
         return sb.toString();
     }
 }
-

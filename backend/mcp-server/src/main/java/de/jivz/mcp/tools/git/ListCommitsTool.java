@@ -14,16 +14,14 @@ import java.io.IOException;
 import java.util.*;
 @Component
 @Slf4j
-public class ListCommitsTool implements Tool {
+public class ListCommitsTool extends GitToolBase implements Tool {
     private static final String NAME = "list_commits";
-    @Value("${personal.github.token}")
-    private String githubToken;
-    @Value("${personal.github.repository}")
-    private String defaultRepository;
+
     @Override
     public String getName() {
         return NAME;
     }
+
     @Override
     public ToolDefinition getDefinition() {
         Map<String, PropertyDefinition> properties = new LinkedHashMap<>();
@@ -40,24 +38,33 @@ public class ListCommitsTool implements Tool {
                         .build())
                 .build();
     }
+
     @Override
     public Object execute(Map<String, Object> arguments) {
         ToolArguments args = ToolArguments.of(arguments);
         int limit = args.getInt("limit", 30);
-        log.info("Listing {} commits", limit);
+        String repository = getRepository((String) arguments.get("repository"));
+
+        log.info("🔧 Listing {} commits from repo: {}", limit, repository);
+
         try {
             GitHub github = connectToGitHub();
-            GHRepository repo = github.getRepository(defaultRepository);
+            GHRepository repo = github.getRepository(repository);
+
             List<GHCommit> commits = repo.listCommits().toList();
             List<Map<String, Object>> commitList = new ArrayList<>();
+
             int count = 0;
             for (GHCommit commit : commits) {
                 if (count >= limit) break;
+
                 Map<String, Object> commitData = new LinkedHashMap<>();
                 commitData.put("sha", commit.getSHA1());
                 commitData.put("html_url", commit.getHtmlUrl().toString());
+
                 Map<String, Object> commitDetail = new LinkedHashMap<>();
                 commitDetail.put("message", commit.getCommitShortInfo().getMessage());
+
                 Map<String, String> author = new LinkedHashMap<>();
                 if (commit.getCommitShortInfo().getAuthor() != null) {
                     author.put("name", commit.getCommitShortInfo().getAuthor().getName());
@@ -65,17 +72,16 @@ public class ListCommitsTool implements Tool {
                     author.put("date", commit.getCommitDate().toString());
                 }
                 commitDetail.put("author", author);
+
                 commitData.put("commit", commitDetail);
                 commitList.add(commitData);
                 count++;
             }
+
             return commitList;
         } catch (Exception e) {
             log.error("Failed to list commits: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
-    }
-    private GitHub connectToGitHub() throws IOException {
-        return GitHub.connectUsingOAuth(githubToken);
     }
 }

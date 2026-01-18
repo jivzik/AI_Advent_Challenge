@@ -19,12 +19,6 @@ import java.util.*;
 public class TriggerWorkflowTool extends GitToolBase implements Tool {
     private static final String NAME = "trigger_workflow";
 
-    @Value("${personal.github.token}")
-    private String githubToken;
-
-    @Value("${personal.github.repository}")
-    private String defaultRepository;
-
 
     @Override
     public String getName() {
@@ -56,42 +50,32 @@ public class TriggerWorkflowTool extends GitToolBase implements Tool {
         ToolArguments args = ToolArguments.of(arguments);
         String workflowFileName = args.getRequiredString("workflow");
         String ref = args.getString("ref", "main");
-        String repository = (String) arguments.getOrDefault("repository", defaultRepository);
+        String repository = getRepository((String) arguments.get("repository"));
 
-        log.info("🔧 Triggering workflow: {} on ref: {}", workflowFileName, ref);
+        log.info("🔧 Triggering workflow: {} on ref: {} in repo: {}", workflowFileName, ref, repository);
+
         try {
             GitHub github = connectToGitHub();
             GHWorkflow workflow = github.getRepository(repository)
                 .getWorkflow(workflowFileName);
+
             if (workflow == null) {
                 throw new ToolExecutionException("Workflow not found: " + workflowFileName);
             }
+
             workflow.dispatch(ref);
+
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
             result.put("workflow", workflowFileName);
             result.put("ref", ref);
+            result.put("repository", repository);
             result.put("message", "Workflow triggered successfully");
+
             return result;
         } catch (Exception e) {
             log.error("Failed to trigger workflow: {}", e.getMessage(), e);
             throw new ToolExecutionException("Failed to trigger workflow: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Connect to GitHub using configured token or anonymous access
-     */
-    private GitHub connectToGitHub() throws IOException {
-        if (githubToken != null && !githubToken.isBlank()) {
-            log.debug("🔐 Connecting to GitHub with token authentication");
-            return new GitHubBuilder()
-                    .withOAuthToken(githubToken)
-                    .build();
-        } else {
-            log.warn("⚠️  No GitHub token configured. Using anonymous access (rate limited).");
-            log.warn("⚠️  Configure 'github.token' property for better rate limits.");
-            return GitHub.connectAnonymously();
         }
     }
 }

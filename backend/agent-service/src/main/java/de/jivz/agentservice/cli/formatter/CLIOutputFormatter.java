@@ -140,8 +140,11 @@ public class CLIOutputFormatter {
               commits                Show recent commits
             
             🔧 Git Operations:
+              git status             Show modified/staged files
               commit "message"       Commit changes with message
               commit message "text"  Alternative commit syntax
+              push                   Push to origin
+              push <branch>          Push specific branch
             
             🛠️  Utility:
               help                   Show this help
@@ -150,9 +153,12 @@ public class CLIOutputFormatter {
             💡 Examples:
               > deploy team-service
               > показать статус
-              > задеплой support-service
+              > git status
+              > изменения
               > commit "feat: Add new CLI feature"
-              > закоммить "добавлен новый функционал"
+              > push
+              > push master
+              > задеплой support-service
               > generate release notes
             """).reset());
     }

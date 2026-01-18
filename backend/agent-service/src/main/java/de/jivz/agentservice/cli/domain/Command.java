@@ -9,7 +9,7 @@ public class Command {
     String rawInput;
     String language;
     public enum CommandType {
-        DEPLOY, STATUS, LOGS, HEALTH, RELEASE_NOTES, CREATE_RELEASE, COMMITS, ROLLBACK, COMMIT, HELP, EXIT, UNKNOWN
+        DEPLOY, STATUS, LOGS, HEALTH, RELEASE_NOTES, CREATE_RELEASE, COMMITS, ROLLBACK, COMMIT, PUSH, GIT_STATUS, HELP, EXIT, UNKNOWN
     }
     public boolean requiresServiceName() {
         return type == CommandType.DEPLOY || type == CommandType.LOGS || type == CommandType.HEALTH || type == CommandType.ROLLBACK;

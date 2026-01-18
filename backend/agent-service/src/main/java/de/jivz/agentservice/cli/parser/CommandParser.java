@@ -35,6 +35,8 @@ public class CommandParser {
         COMMITS - when user wants to see commits
         ROLLBACK - when user wants to rollback a service
         COMMIT - when user wants to commit changes to git
+        PUSH - when user wants to push to remote
+        GIT_STATUS - when user wants to see git status/changes
         HELP - when user asks for help
         EXIT - when user wants to exit (quit, exit, bye)
         UNKNOWN - if you cannot determine the intent
@@ -148,6 +150,30 @@ public class CommandParser {
                 .serviceName(logsMatcher.group(2))
                 .rawInput(input)
                 .language(logsMatcher.group(1).startsWith("лог") ? "de" : "en")
+                .build();
+        }
+
+        // Push commands
+        if (lower.equals("push") || lower.equals("пуш") || lower.equals("запушить") || lower.startsWith("push ") || lower.startsWith("пуш ")) {
+            String branch = null;
+            if (lower.contains(" ")) {
+                branch = input.substring(input.indexOf(" ") + 1).trim();
+            }
+            return Command.builder()
+                .type(Command.CommandType.PUSH)
+                .serviceName(branch)
+                .rawInput(input)
+                .language(lower.startsWith("пуш") || lower.startsWith("запушить") ? "de" : "en")
+                .build();
+        }
+
+        // Git status commands
+        if (lower.equals("git status") || lower.equals("git-status") || lower.equals("gitstatus") ||
+            lower.equals("изменения") || lower.equals("что изменилось") || lower.equals("покажи изменения")) {
+            return Command.builder()
+                .type(Command.CommandType.GIT_STATUS)
+                .rawInput(input)
+                .language(lower.startsWith("git") ? "en" : "de")
                 .build();
         }
 

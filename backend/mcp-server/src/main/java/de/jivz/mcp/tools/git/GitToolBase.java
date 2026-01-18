@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.kohsuke.github.GitHub;
+import org.kohsuke.github.GitHubBuilder;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.File;
@@ -17,7 +19,7 @@ import java.util.List;
 
 /**
  * Базовый класс для Git-инструментов.
- * Содержит общую логику для работы с Git-репозиторием и файловой системой.
+ * Содержит общую логику для работы с Git-репозиторием, GitHub API и файловой системой.
  */
 @Slf4j
 public abstract class GitToolBase {
@@ -35,6 +37,41 @@ public abstract class GitToolBase {
 
     @Value("${git.project.root:#{systemProperties['user.dir']}}")
     protected String projectRoot;
+
+    @Value("${personal.github.token}")
+    protected String githubToken;
+
+    @Value("${personal.github.repository}")
+    protected String defaultRepository;
+
+    /**
+     * Подключение к GitHub API с использованием токена.
+     * Используется всеми GitHub-инструментами для единообразной аутентификации.
+     */
+    protected GitHub connectToGitHub() throws IOException {
+        if (githubToken != null && !githubToken.isBlank()) {
+            log.debug("🔐 Connecting to GitHub with token authentication");
+            return new GitHubBuilder()
+                    .withOAuthToken(githubToken)
+                    .build();
+        } else {
+            log.warn("⚠️ Connecting to GitHub without authentication (rate limits apply)");
+            return GitHub.connectAnonymously();
+        }
+    }
+
+    /**
+     * Получить имя репозитория (default или переданное).
+     */
+    protected String getRepository(String customRepository) {
+        if (customRepository != null && !customRepository.isBlank()) {
+            return customRepository;
+        }
+        if (defaultRepository == null || defaultRepository.isBlank()) {
+            throw new ToolExecutionException("Repository not specified and no default repository configured");
+        }
+        return defaultRepository;
+    }
 
     /**
      * Получить Git-репозиторий.
@@ -141,4 +178,3 @@ public abstract class GitToolBase {
         }
     }
 }
-
