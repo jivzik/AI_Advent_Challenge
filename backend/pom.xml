@@ -27,6 +27,7 @@
         <module>agent-service</module>
         <module>team-assistant-service</module>
         <module>support-service</module>
+        <module>llm-chat-service</module>
     </modules>
 
 
