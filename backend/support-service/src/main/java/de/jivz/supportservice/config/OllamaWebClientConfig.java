@@ -44,7 +44,7 @@ public class OllamaWebClientConfig {
 
         // Netty HTTP Client mit optimierten Timeouts
         HttpClient httpClient = HttpClient.create(connectionProvider)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 60000)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 400000)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .responseTimeout(Duration.ofSeconds(ollamaProperties.getTimeoutSeconds()))
                 .doOnConnected(conn -> conn
