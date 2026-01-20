@@ -25,7 +25,7 @@ jobs:
         run: |
           cat > .env << EOF
           POSTGRES_DB=ai_challenge_db
-          POSTGRES_USER=ai_user
+          POSTGRES_USER=local_user
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           SPRING_PROFILES_ACTIVE=prod
           OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
