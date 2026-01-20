@@ -21,6 +21,9 @@ public class SupportChatRequest {
     private String category; // Категория (auth, catalog, order, etc.)
     private String priority; // Приоритет (low, medium, high, critical)
 
+    // LLM Provider Selection
+    private String llmProvider; // "local" oder "remote" (default: "remote")
+
     // Optional context
     private String orderId; // Номер заказа (если связан)
     private String productId; // Артикул товара (если связан)

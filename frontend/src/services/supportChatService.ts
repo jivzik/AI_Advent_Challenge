@@ -12,6 +12,7 @@ interface SendMessageRequest {
     orderId?: string;
     productId?: string;
     errorCode?: string;
+    llmProvider?: string; // 'local' or 'remote'
 }
 
 /**

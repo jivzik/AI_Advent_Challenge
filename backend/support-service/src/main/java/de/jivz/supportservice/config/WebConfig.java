@@ -4,6 +4,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -20,9 +22,18 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * Provide ObjectMapper bean for JSON serialization/deserialization
+     * with Java 8 Date/Time support
      */
     @Bean
     public ObjectMapper objectMapper() {
-        return new ObjectMapper();
+        ObjectMapper mapper = new ObjectMapper();
+
+        // Registriere Java 8 Date/Time Module für LocalDateTime Support
+        mapper.registerModule(new JavaTimeModule());
+
+        // Schreibe Dates als ISO-8601 Strings statt Timestamps
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        return mapper;
     }
 }

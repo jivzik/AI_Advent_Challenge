@@ -172,8 +172,10 @@ public class SupportChatService {
         // 8. Clear thread local context vor dem tool loop
         de.jivz.supportservice.service.orchestrator.ThreadLocalTicketContext.clear();
 
-        // 9. Запустить tool execution loop
-        String aiAnswer = toolExecutionOrchestrator.executeToolLoop(messages, aiTemperature);
+        // 9. Запустить tool execution loop mit llmProvider
+        String llmProvider = request.getLlmProvider() != null ? request.getLlmProvider() : "remote";
+        log.info("🤖 Using LLM provider: {}", llmProvider);
+        String aiAnswer = toolExecutionOrchestrator.executeToolLoop(messages, aiTemperature, llmProvider);
 
         // 10. После AI-обработки проверить, был ли создан GitHub issue через tool
         String createdTicketNumber = de.jivz.supportservice.service.orchestrator.ThreadLocalTicketContext.getTicketNumber();

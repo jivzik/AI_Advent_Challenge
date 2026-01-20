@@ -8,16 +8,29 @@
             <h1>💬 Support Chat</h1>
             <p>AI-powered customer support with FAQ knowledge base</p>
           </div>
-          <div class="header-actions" v-if="currentTicket">
-            <span class="ticket-badge">
-              🎫 {{ currentTicket.ticketNumber }}
-            </span>
-            <span
-                class="status-badge"
-                :class="currentTicket.status"
-            >
-              {{ currentTicket.status }}
-            </span>
+          <div class="header-actions">
+            <!-- LLM Provider Toggle -->
+            <div class="llm-provider-toggle">
+              <button
+                  @click="toggleLlmProvider"
+                  class="provider-btn"
+                  :class="{ active: llmProvider === 'local' }"
+                  title="Switch between local and remote LLM"
+              >
+                {{ llmProvider === 'local' ? '🤖 Local (Ollama)' : '☁️ Remote (OpenRouter)' }}
+              </button>
+            </div>
+            <div v-if="currentTicket">
+              <span class="ticket-badge">
+                🎫 {{ currentTicket.ticketNumber }}
+              </span>
+              <span
+                  class="status-badge"
+                  :class="currentTicket.status"
+              >
+                {{ currentTicket.status }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -216,6 +229,7 @@ const isLoading = ref(false);
 const error = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
 const currentTicket = ref<TicketInfo | null>(null);
+const llmProvider = ref<'local' | 'remote'>('local'); // 'local' für Ollama, 'remote' für OpenRouter
 
 // User info (в реальном приложении получать из auth)
 const userEmail = ref('test@company.ru');
@@ -227,6 +241,11 @@ const props = defineProps<{
 }>();
 
 // Methods
+const toggleLlmProvider = () => {
+  llmProvider.value = llmProvider.value === 'local' ? 'remote' : 'local';
+  console.log('Switched LLM provider to:', llmProvider.value);
+};
+
 const sendMessage = async () => {
   if (!userInput.value.trim() || isLoading.value) return;
 
@@ -251,7 +270,8 @@ const sendMessage = async () => {
       message: messageText,
       ticketNumber: props.ticketNumber || currentTicket.value?.ticketNumber,
       category: 'other', // можно добавить выбор категории
-      priority: 'medium'
+      priority: 'medium',
+      llmProvider: llmProvider.value // Send LLM provider preference
     });
 
     // Update current ticket info
