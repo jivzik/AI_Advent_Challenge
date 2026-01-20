@@ -29,6 +29,28 @@ services:
       - "com.docker.compose.project=ai-services"
 
   # ==================================
+  # Ollama LLM Server
+  # ==================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "com.docker.compose.project=ai-services"
+
+  # ==================================
   # MCP Server (Port 8081)
   # ==================================
   mcp-server:
@@ -46,8 +68,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ai_challenge_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-ai_user}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      PERSONAL_GITHUB_TOKEN: ${PERSONAL_GITHUB_TOKEN:?PERSONAL_GITHUB_TOKEN must be set}
-      PERSONAL_GITHUB_REPOSITORY: ${PERSONAL_GITHUB_REPOSITORY:?PERSONAL_GITHUB_REPOSITORY must be set}
+      PERSONAL_GITHUB_TOKEN: ${PERSONAL_GITHUB_TOKEN:-}
+      PERSONAL_GITHUB_REPOSITORY: ${PERSONAL_GITHUB_REPOSITORY:-}
       SERVER_PORT: 8081
     ports:
       - "8081:8081"
@@ -144,12 +166,20 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mcp-server:
+        condition: service_started
+      rag-mcp-server:
+        condition: service_started
+      ollama:
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ai_challenge_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-ai_user}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OLLAMA_URL: http://ollama:11434
+      MCP_GOOGLE_URL: http://mcp-server:8081
       SERVER_PORT: 8088
     ports:
       - "8088:8088"
@@ -270,6 +300,9 @@ networks:
 volumes:
   postgres_data:
     name: ai-postgres-data
+    driver: local
+  ollama-data:
+    name: ai-ollama-data
     driver: local
   nginx-logs:
     name: ai-nginx-logs
