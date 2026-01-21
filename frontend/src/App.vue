@@ -56,6 +56,12 @@
       >
         Team Assistent
       </button>
+      <button
+          @click="currentMode = 'ollama-chat'"
+          :class="{ active: currentMode === 'ollama-chat' }"
+      >
+        🤖 Ollama Chat
+      </button>
     </div>
 
     <!-- Component Display -->
@@ -68,6 +74,7 @@
     <DocumentLibrary v-else-if="currentMode === 'rag-library'" @navigate="handleNavigate" />
     <SupportChat v-else-if="currentMode === 'support'" @navigate="handleNavigate" />
     <TeamAssistantChat v-else-if="currentMode === 'team-assistant'" @navigate="handleNavigate" />
+    <OllamaChatPage v-else-if="currentMode === 'ollama-chat'" />
   </div>
 </template>
 
@@ -82,9 +89,10 @@ import DocumentSearch from './components/DocumentSearch.vue';
 import DocumentLibrary from './components/DocumentLibrary.vue';
 import SupportChat from './components/SupportChat.vue';
 import TeamAssistantChat from './components/TeamAssistantChat.vue';
+import OllamaChatPage from './components/OllamaChatPage.vue';
 
 
-type Mode = 'normal' | 'meta' | 'reminder' | 'openrouter' | 'rag-upload' | 'rag-search' | 'rag-library' | 'support' | 'team-assistant';
+type Mode = 'normal' | 'meta' | 'reminder' | 'openrouter' | 'rag-upload' | 'rag-search' | 'rag-library' | 'support' | 'team-assistant' | 'ollama-chat';
 const currentMode = ref<Mode>('normal');
 
 const handleNavigate = (mode: string) => {

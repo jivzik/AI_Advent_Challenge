@@ -386,7 +386,9 @@ $sidebar-collapsed-width-base: 50px;
     .message-content {
       background: $primary-color;
       color: $text-white;
-      max-width: 70%;
+      max-width: 85%;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
   }
 
@@ -397,6 +399,8 @@ $sidebar-collapsed-width-base: 50px;
       background: $bg-light;
       color: $text-dark;
       max-width: 85%;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
     &.loading {
@@ -439,6 +443,9 @@ $sidebar-collapsed-width-base: 50px;
 .message-text {
   font-size: $font-size-md;
   margin-bottom: $spacing-sm;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 
   p {
     margin: 0 0 8px 0;
@@ -462,6 +469,7 @@ $sidebar-collapsed-width-base: 50px;
     border-radius: 4px;
     font-family: $font-mono;
     font-size: $font-size-sm;
+    word-break: break-all;
   }
 
   pre {
