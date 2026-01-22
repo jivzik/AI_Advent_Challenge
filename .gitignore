@@ -1,21 +1,222 @@
-# IDE
-.idea/
-.vscode/
-*.iml
+# ============================================
+# Java / Maven / Spring Boot
+# ============================================
+
+# Compiled class files
+*.class
+
+# Package Files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
 # Maven
 target/
 !.mvn/wrapper/maven-wrapper.jar
-# Environment
+!**/src/main/**/target/
+!**/src/test/**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Build output
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ============================================
+# IDE and Editors
+# ============================================
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.loadpath
+.recommenders
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# ============================================
+# Operating System Files
+# ============================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================
+# Environment and Secrets
+# ============================================
+
 .env
 .env.local
-# OS
-.DS_Store
-Thumbs.db
-# Logs
+.env.*.local
+.env.production
+.env.development
+*.pem
+*.key
+credentials.json
+secrets.yaml
+application-secret.properties
+
+# ============================================
+# Logs and Debugging
+# ============================================
+
 *.log
-# Frontend
+logs/
+*.log.*
+log/
+test_results_*/
+hs_err_pid*
+replay_pid*
+
+# ============================================
+# Frontend (Node.js / Vue)
+# ============================================
+
+# Note: frontend/ has its own .gitignore for more specific rules
 frontend/node_modules/
 frontend/dist/
+frontend/dist-ssr/
 frontend/.vite/
-# Scripts
-*.sh
+frontend/.cache/
+
+# ============================================
+# MCP Servers (Node.js)
+# ============================================
+
+# Note: mcp-servers/*/ have their own .gitignore for specific rules
+mcp-servers/*/node_modules/
+mcp-servers/*/dist/
+
+# ============================================
+# Database and Search Index
+# ============================================
+
+# PostgreSQL dumps
+*.sql.backup
+*.dump
+
+# Kotlin-index database
+.kotlin-index.db
+.kotlin-index.db-shm
+.kotlin-index.db-wal
+
+# ============================================
+# Docker
+# ============================================
+
+docker-compose.override.yml
+.dockerignore
+
+# ============================================
+# Testing
+# ============================================
+
+test-output/
+test-results/
+junit/
+*.test.log
+
+# Coverage reports
+coverage/
+*.exec
+*.lcov
+.nyc_output/
+
+# ============================================
+# Temporary and Cache Files
+# ============================================
+
+*.cache
+*.pid
+*.seed
+*.pid.lock
+.cache/
+.temp/
+temp/
+tmp/
+
+# ============================================
+# Project Specific
+# ============================================
+
+# Documentation builds
+docs/_build/
+site/
+
+# Backup files
+*.backup
+*.old
+
+# HELP.md from Spring Initializr (optional, uncomment if needed)
+# HELP.md

@@ -263,6 +263,218 @@ RAG service handles PDF, TXT, and FB2. To support new formats:
 - **[Meta-Prompting](docs/features/META_PROMPTING_FEATURE.md)** - Universal agent behavior
 - **[Nutritionist Agent](docs/features/NUTRITIONIST_AGENT_FEATURE.md)** - Specialized meal planning
 
+## Code Search Strategy
+
+**CRITICAL: Always use kotlin-index for fast code navigation!**
+
+### kotlin-index Plugin
+
+This project uses the kotlin-index CLI tool and Claude Code plugin for blazing-fast code search:
+- **Index location**: `.kotlin-index.db` (SQLite database in project root)
+- **Speed**: 90-260x faster than grep for most operations
+- **Plugin**: Automatically available in Claude Code after installation
+
+### First-time Setup
+
+```bash
+# Build index for this project (run once)
+cd /path/to/project
+kotlin-index rebuild
+
+# Or with module dependencies
+kotlin-index rebuild --deps
+
+# Update index after code changes
+kotlin-index update
+```
+
+### Search Workflow Rules
+
+#### 1. For finding classes/methods/interfaces:
+
+**✅ DO THIS** (kotlin-index):
+```bash
+# Find classes
+kotlin-index class ChatWithToolsController
+
+# Find implementations
+kotlin-index implementations MCPService
+
+# Find symbol usages (8ms vs 1.4s grep!)
+kotlin-index usages UserRepository
+
+# Search anything
+kotlin-index search ViewModel
+
+# Class hierarchy
+kotlin-index hierarchy BaseService
+```
+
+**❌ DON'T DO THIS** (slow grep):
+```bash
+# AVOID - scans entire codebase, wastes tokens
+grep -r "ClassName" backend/
+find . -name "*.java" -exec grep "pattern" {} \;
+```
+
+#### 2. Search decision tree:
+
+```
+Need to find code?
+  │
+  ├─ Class/method/interface/symbol?
+  │    → Use kotlin-index (instant results)
+  │    → kotlin-index class/symbol/search <name>
+  │
+  ├─ Implementation/inheritance?
+  │    → kotlin-index implementations <Parent>
+  │    → kotlin-index hierarchy <Class>
+  │
+  ├─ Where is symbol used?
+  │    → kotlin-index usages <Symbol>
+  │
+  ├─ Module dependencies?
+  │    → kotlin-index deps <module>
+  │    → kotlin-index dependents <module>
+  │
+  ├─ Special patterns (TODO, @Composable, etc)?
+  │    → kotlin-index todo
+  │    → kotlin-index composables
+  │    → kotlin-index suspend
+  │
+  └─ Architecture understanding?
+       → Read CLAUDE.md structure first
+```
+
+#### 3. Index maintenance:
+
+**When to update**:
+```bash
+# After code changes (incremental, fast)
+kotlin-index update
+
+# After major refactoring (full rebuild)
+kotlin-index rebuild
+
+# After adding/removing modules
+kotlin-index rebuild --deps
+```
+
+**Check index status**:
+```bash
+kotlin-index stats
+```
+
+### Available Commands
+
+#### Index-based (instant results):
+- `kotlin-index search <QUERY>` - Universal search (~11ms)
+- `kotlin-index class <NAME>` - Find classes (~1ms)
+- `kotlin-index symbol <NAME>` - Find symbols
+- `kotlin-index implementations <PARENT>` - Find implementations (~30ms)
+- `kotlin-index hierarchy <CLASS>` - Class hierarchy tree
+- `kotlin-index usages <SYMBOL>` - Symbol usages (~8ms vs 1.4s grep!)
+
+#### Module analysis:
+- `kotlin-index module <PATTERN>` - Find modules
+- `kotlin-index deps <MODULE>` - Module dependencies (~3ms)
+- `kotlin-index dependents <MODULE>` - Dependent modules (~2ms)
+- `kotlin-index api <MODULE>` - Public API of module
+
+#### Special searches (grep-based, no index):
+- `kotlin-index todo [PATTERN]` - TODO/FIXME comments
+- `kotlin-index callers <FUNCTION>` - Function call sites
+- `kotlin-index suspend [QUERY]` - Suspend functions
+- `kotlin-index composables [QUERY]` - @Composable functions
+- `kotlin-index inject <TYPE>` - @Inject points
+- `kotlin-index extensions <TYPE>` - Extension functions
+
+#### File analysis:
+- `kotlin-index outline <FILE>` - Symbols in file (~10ms)
+- `kotlin-index imports <FILE>` - Imports in file (~0.3ms!)
+- `kotlin-index changed [--base BRANCH]` - Changed symbols (git diff)
+
+### Example workflows:
+
+**✅ GOOD: Finding ChatWithToolsController**
+```
+User: где находится ChatWithToolsController?
+
+Claude process:
+1. Runs: kotlin-index class ChatWithToolsController
+2. Gets instant result (~1ms)
+3. Reads ONLY that specific file
+4. Returns answer
+
+Result: 0.001 seconds, ~2k tokens
+```
+
+**✅ GOOD: Finding all service implementations**
+```
+User: покажи все реализации MCPService
+
+Claude process:
+1. Runs: kotlin-index implementations MCPService
+2. Gets list of all implementations (~30ms)
+3. Reads relevant files
+4. Returns answer
+
+Result: 0.03 seconds, ~5k tokens
+```
+
+**❌ BAD: Using grep everywhere**
+```
+User: где находится ChatWithToolsController?
+
+Claude process:
+1. grep -r "ChatWithToolsController" backend/
+2. Scans 2000+ files
+3. Reads 50+ matching files
+4. Filters results manually
+5. Returns answer
+
+Result: 15 seconds, ~60k tokens wasted
+```
+
+### Benefits of kotlin-index:
+- **Speed**: 1-260x faster than grep depending on operation
+    - imports: 260x faster (0.3ms vs 90ms)
+    - class lookup: 90x faster (1ms vs 90ms)
+    - usages: 12x faster (8ms vs 1.4s)
+- **Tokens**: 2k vs 50-60k tokens saved
+- **Accuracy**: Exact file paths, symbol resolution, no false positives
+- **Scalability**: Works on massive codebases (tested on 29k files, 300k symbols)
+
+### Integration with Claude Code:
+
+The kotlin-index plugin works **automatically** in Claude Code. Just ask:
+
+```
+Найди все ViewModel классы
+Покажи где используется UserRepository
+Найди все TODO комментарии
+Покажи иерархию класса BaseService
+Какие модули зависят от openrouter-service?
+```
+
+Claude will automatically use kotlin-index tools to answer your questions instantly.
+
+### Performance on this project:
+
+After running `kotlin-index rebuild`, you'll have instant access to:
+- All Java/Kotlin classes and interfaces
+- All method signatures and symbols
+- Complete module dependency graph
+- Full-text search across codebase
+- 900k+ indexed references
+
+**Example stats** (typical Spring Boot project):
+- Files indexed: ~2,000
+- Symbols indexed: ~30,000
+- References indexed: ~100,000
+- Index size: ~20 MB
+- Search time: <50ms for most queries
+
 ## Technology Stack Notes
 
 - **Spring Boot 3.4.0** uses Jakarta EE namespaces (not javax.*)
