@@ -38,8 +38,8 @@ public class LlmChatService {
 
         log.info("Processing chat request with message: {}",
                 request.getMessage() != null && request.getMessage().length() > 50
-                    ? request.getMessage().substring(0, 50) + "..."
-                    : request.getMessage());
+                        ? request.getMessage().substring(0, 50) + "..."
+                        : request.getMessage());
 
         // Build Ollama request with parameters
         OllamaRequest ollamaRequest = buildOllamaRequest(request);
@@ -66,7 +66,7 @@ public class LlmChatService {
                 ? request.getModel()
                 : llmProperties.getModel();
 
-        // Build options map
+        // Build options map with OPTIMIZED PARAMETERS
         Map<String, Object> options = new HashMap<>();
 
         // Temperature
@@ -81,10 +81,27 @@ public class LlmChatService {
                 : llmProperties.getMaxTokens();
         options.put("num_predict", maxTokens);
 
+        // 🆕 OPTIMIZATION PARAMETERS
+        options.put("num_ctx", 4096);           // Context window size
+        options.put("top_k", 40);               // Limit vocabulary
+        options.put("top_p", 0.9);              // Nucleus sampling
+        options.put("repeat_penalty", 1.1);     // Avoid repetition
+
+        // 🆕 OPTIMIZED SYSTEM PROMPT (if not provided)
+        String systemPrompt = request.getSystemPrompt();
+        if (systemPrompt == null || systemPrompt.trim().isEmpty()) {
+            systemPrompt = "Ты AI ассистент для разработчиков Spring Boot и Vue.js.\n\n" +
+                    "Правила ответов:\n" +
+                    "1. Отвечай кратко и точно\n" +
+                    "2. Примеры кода в markdown формате\n" +
+                    "3. Указывай на потенциальные проблемы\n\n" +
+                    "Формат: объяснение + код (если нужен).";
+        }
+
         return OllamaRequest.builder()
                 .model(model)
                 .prompt(request.getMessage())
-                .system(request.getSystemPrompt())
+                .system(systemPrompt)
                 .stream(request.getStream() != null ? request.getStream() : false)
                 .options(options)
                 .build();
