@@ -28,6 +28,7 @@
         <module>team-assistant-service</module>
         <module>support-service</module>
         <module>llm-chat-service</module>
+        <module>analytics-service</module>
     </modules>
 
 

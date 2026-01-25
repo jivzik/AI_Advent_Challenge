@@ -74,6 +74,7 @@ public class LlmChatService {
                 ? request.getTemperature()
                 : llmProperties.getTemperature();
         options.put("temperature", temperature);
+        options.put("stream",false);
 
         // Max tokens (num_predict in Ollama)
         Integer maxTokens = request.getMaxTokens() != null
