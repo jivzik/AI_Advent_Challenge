@@ -1,0 +1,11 @@
+timestamp,service,level,message,error_type
+2026-01-22 10:15:23,llm-chat-service,ERROR,chat() failed,NullPointerException
+2026-01-22 10:18:45,llm-chat-service,ERROR,Ollama timeout,TimeoutException
+2026-01-22 10:22:15,llm-chat-service,ERROR,chat() failed,NullPointerException
+2026-01-22 10:35:30,support-service,ERROR,Database connection lost,SQLException
+2026-01-22 10:42:10,llm-chat-service,ERROR,chat() failed,NullPointerException
+2026-01-22 11:05:22,llm-chat-service,ERROR,Ollama timeout,TimeoutException
+2026-01-22 11:15:45,llm-chat-service,ERROR,chat() failed,NullPointerException
+2026-01-22 11:28:12,analytics-service,ERROR,File parsing failed,IOException
+2026-01-22 11:45:33,llm-chat-service,ERROR,chat() failed,NullPointerException
+2026-01-22 14:12:55,llm-chat-service,ERROR,Ollama timeout,TimeoutException

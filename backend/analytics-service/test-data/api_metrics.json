@@ -1,0 +1,44 @@
+[
+  {
+    "timestamp": "2026-01-22T10:00:00",
+    "endpoint": "/api/chat",
+    "status": 200,
+    "response_time_ms": 2340
+  },
+  {
+    "timestamp": "2026-01-22T10:05:00",
+    "endpoint": "/api/chat",
+    "status": 200,
+    "response_time_ms": 3200
+  },
+  {
+    "timestamp": "2026-01-22T10:10:00",
+    "endpoint": "/api/health",
+    "status": 200,
+    "response_time_ms": 45
+  },
+  {
+    "timestamp": "2026-01-22T10:15:00",
+    "endpoint": "/api/chat",
+    "status": 500,
+    "response_time_ms": 5670
+  },
+  {
+    "timestamp": "2026-01-22T10:20:00",
+    "endpoint": "/api/analytics/analyze",
+    "status": 200,
+    "response_time_ms": 4500
+  },
+  {
+    "timestamp": "2026-01-22T10:25:00",
+    "endpoint": "/api/chat",
+    "status": 200,
+    "response_time_ms": 2100
+  },
+  {
+    "timestamp": "2026-01-22T10:30:00",
+    "endpoint": "/api/health",
+    "status": 200,
+    "response_time_ms": 50
+  }
+]

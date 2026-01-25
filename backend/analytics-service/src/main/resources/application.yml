@@ -1,0 +1,21 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: analytics-service
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+llm:
+  chat:
+    service:
+      url: http://localhost:8090
+      timeout: 60
+
+logging:
+  level:
+    de.jivz.analyticsservice: INFO
+    org.springframework.web: INFO
