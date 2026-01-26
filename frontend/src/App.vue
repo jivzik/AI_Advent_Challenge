@@ -74,6 +74,7 @@
       >
         🎯 Персонализация
       </button>
+
     </div>
 
     <!-- Component Display -->
@@ -89,6 +90,7 @@
     <OllamaChatPage v-else-if="currentMode === 'ollama-chat'" />
     <AnalyticsPage v-else-if="currentMode === 'analytics'" />
     <PersonalizedChatDemo v-else-if="currentMode === 'personalized-demo'" />
+
   </div>
 </template>
 
@@ -109,6 +111,7 @@ import PersonalizedChatDemo from './components/PersonalizedChatDemo.vue';
 
 
 type Mode = 'normal' | 'meta' | 'reminder' | 'openrouter' | 'rag-upload' | 'rag-search' | 'rag-library' | 'support' | 'team-assistant' | 'ollama-chat' | 'analytics' | 'personalized-demo';
+
 const currentMode = ref<Mode>('normal');
 
 const handleNavigate = (mode: string) => {
