@@ -68,6 +68,12 @@
       >
         📊 Analytics
       </button>
+      <button
+          @click="currentMode = 'personalized-demo'"
+          :class="{ active: currentMode === 'personalized-demo' }"
+      >
+        🎯 Персонализация
+      </button>
     </div>
 
     <!-- Component Display -->
@@ -82,6 +88,7 @@
     <TeamAssistantChat v-else-if="currentMode === 'team-assistant'" @navigate="handleNavigate" />
     <OllamaChatPage v-else-if="currentMode === 'ollama-chat'" />
     <AnalyticsPage v-else-if="currentMode === 'analytics'" />
+    <PersonalizedChatDemo v-else-if="currentMode === 'personalized-demo'" />
   </div>
 </template>
 
@@ -98,9 +105,10 @@ import SupportChat from './components/SupportChat.vue';
 import TeamAssistantChat from './components/TeamAssistantChat.vue';
 import OllamaChatPage from './components/OllamaChatPage.vue';
 import AnalyticsPage from './components/AnalyticsPage.vue';
+import PersonalizedChatDemo from './components/PersonalizedChatDemo.vue';
 
 
-type Mode = 'normal' | 'meta' | 'reminder' | 'openrouter' | 'rag-upload' | 'rag-search' | 'rag-library' | 'support' | 'team-assistant' | 'ollama-chat' | 'analytics';
+type Mode = 'normal' | 'meta' | 'reminder' | 'openrouter' | 'rag-upload' | 'rag-search' | 'rag-library' | 'support' | 'team-assistant' | 'ollama-chat' | 'analytics' | 'personalized-demo';
 const currentMode = ref<Mode>('normal');
 
 const handleNavigate = (mode: string) => {
