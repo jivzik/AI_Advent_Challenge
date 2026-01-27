@@ -64,6 +64,9 @@ public class PromptLoaderService {
     @Value("classpath:prompts/developer-code-style.md")
     private Resource developerCodeStylePrompt;
 
+    @Value("classpath:prompts/audio-transcription.md")
+    private Resource audioTranscriptionPrompt;
+
     public PromptLoaderService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
@@ -85,6 +88,7 @@ public class PromptLoaderService {
             promptCache.put("context-developer", loadResource(contextDeveloperPrompt));
             promptCache.put("developer-search", loadResource(developerSearchPrompt));
             promptCache.put("developer-code-style", loadResource(developerCodeStylePrompt));
+            promptCache.put("audio-transcription", loadResource(audioTranscriptionPrompt));
             log.info("Loaded {} prompts from resources", promptCache.size());
         } catch (IOException e) {
             log.error("Failed to load prompts", e);
@@ -268,5 +272,26 @@ public class PromptLoaderService {
 
         return result;
     }
+
+    /**
+     * Erstellt den Prompt für Audio-Transkription.
+     *
+     * @param language Optional: Die gewünschte Sprache (z.B. "German", "English")
+     * @return Der Audio-Transkriptions-Prompt
+     */
+    public String buildAudioTranscriptionPrompt(String language) {
+        String template = promptCache.get("audio-transcription");
+        if (template == null) {
+            log.warn("Audio transcription prompt not found");
+            return "Transcribe this audio to text. Return only the transcribed text.";
+        }
+
+        String languageText = language != null && !language.isEmpty()
+                ? language
+                : "the original language";
+
+        return template.replace("{{LANGUAGE}}", languageText);
+    }
 }
+
 

@@ -96,5 +96,77 @@ public class OpenRouterApiClient {
         log.debug("🔍 Sending context detection request");
         return sendChatRequest(messages, 0.1, 100);
     }
+
+    /**
+     * Sendet eine Audio-Transkriptions-Anfrage an OpenRouter (Gemini Flash).
+     * Verwendet multimodal input mit Base64-encodiertem Audio im input_audio Format.
+     *
+     * @param transcriptionPrompt Der Prompt für die Transkription
+     * @param base64Audio Das Base64-encodierte Audio
+     * @param audioFormat Das Audio-Format (z.B. "mp3", "wav")
+     * @return Die Transkription
+     */
+    public String sendAudioTranscriptionRequest(String transcriptionPrompt, String base64Audio, String audioFormat) {
+        log.info("🎤 Calling OpenRouter for audio transcription with Gemini Flash 2.0");
+
+        try {
+            // Build request mit text + audio content (OpenRouter format)
+            OpenRouterApiRequest.ContentPart textPart = OpenRouterApiRequest.ContentPart.builder()
+                    .type("text")
+                    .text(transcriptionPrompt)
+                    .build();
+
+            OpenRouterApiRequest.ContentPart audioPart = OpenRouterApiRequest.ContentPart.builder()
+                    .type("input_audio")
+                    .inputAudio(OpenRouterApiRequest.InputAudio.builder()
+                            .data(base64Audio)
+                            .format(audioFormat)
+                            .build())
+                    .build();
+
+            // Create message with multimodal content (List<ContentPart>)
+            OpenRouterApiRequest.ChatMessage message = new OpenRouterApiRequest.ChatMessage();
+            message.setRole("user");
+            message.setContent(List.of(textPart, audioPart)); // Set as Object (List)
+
+            OpenRouterApiRequest request = OpenRouterApiRequest.builder()
+                    .model(properties.getTranscriptionModel())
+                    .messages(List.of(message))
+                    .temperature(0.1) // Low temperature for accurate transcription
+                    .maxTokens(2000) // Enough for typical transcriptions
+                    .build();
+
+            log.debug("📤 Sending request to OpenRouter with model: {}", properties.getTranscriptionModel());
+
+            OpenRouterApiResponse response = webClient.post()
+                    .uri("/chat/completions")
+                    .bodyValue(request)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::is4xxClientError, r -> r.bodyToMono(String.class)
+                            .flatMap(body -> {
+                                log.error("❌ Transcription client error: {}", body);
+                                return Mono.error(new RuntimeException("Transcription client error: " + body));
+                            }))
+                    .onStatus(HttpStatusCode::is5xxServerError, r -> r.bodyToMono(String.class)
+                            .flatMap(body -> {
+                                log.error("❌ Transcription server error: {}", body);
+                                return Mono.error(new RuntimeException("Transcription server error: " + body));
+                            }))
+                    .bodyToMono(OpenRouterApiResponse.class)
+                    .block();
+
+            if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
+                throw new RuntimeException("Empty response from transcription API");
+            }
+
+            String transcription = response.getChoices().get(0).getMessage().getContent();
+            log.info("📝 Transcription received: {} characters", transcription.length());
+            return transcription.trim();
+
+        } catch (Exception e) {
+            log.error("❌ Error during audio transcription: {}", e.getMessage());
+            throw new RuntimeException("Failed to transcribe audio", e);
+        }
+    }
 }
 

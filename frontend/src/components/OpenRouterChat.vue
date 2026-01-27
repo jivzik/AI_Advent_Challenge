@@ -181,15 +181,34 @@
                 @input="handleInput"
                 type="text"
                 placeholder="Type your message or /help for developer assistance..."
-                :disabled="isLoading"
+                :disabled="isLoading || isProcessingVoice"
                 class="chat-input"
+            />
+            <!-- Voice Button -->
+            <button
+                type="button"
+                @click="triggerAudioUpload"
+                :disabled="isLoading || isProcessingVoice || !voiceAvailable"
+                class="voice-button"
+                :title="voiceAvailable ? 'Upload audio file for transcription' : 'Voice service unavailable'"
+            >
+              <span v-if="isProcessingVoice">⏳</span>
+              <span v-else>🎤</span>
+            </button>
+            <!-- Hidden file input -->
+            <input
+                ref="audioInputRef"
+                type="file"
+                accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm,.aac,.flac"
+                @change="handleAudioUpload"
+                style="display: none"
             />
             <!-- Model Selector Dropdown -->
             <div class="model-selector">
               <button
                   type="button"
                   @click="toggleModelDropdown"
-                  :disabled="isLoading"
+                  :disabled="isLoading || isProcessingVoice"
                   class="model-button"
                   :title="currentModelLabel"
               >
@@ -210,10 +229,10 @@
             </div>
             <button
                 type="submit"
-                :disabled="isLoading || !currentMessage.trim()"
+                :disabled="isLoading || isProcessingVoice || !currentMessage.trim()"
                 class="send-button"
             >
-              {{ isLoading ? 'Sending...' : 'Send' }}
+              {{ isLoading || isProcessingVoice ? 'Sending...' : 'Send' }}
             </button>
           </form>
         </div>
@@ -226,6 +245,7 @@
 import { ref, nextTick, onMounted, computed } from 'vue';
 import OpenRouterSidebar from './OpenRouterSidebar.vue';
 import { OpenRouterChatService } from '../services/openRouterChatService';
+import { VoiceAgentService } from '../services/voiceAgentService';
 
 import { marked } from 'marked';
 import type { Message } from "../types/types";
@@ -243,6 +263,11 @@ const showSettings = ref(false);
 const sidebarRef = ref<InstanceType<typeof OpenRouterSidebar> | null>(null);
 const showCommandSuggestions = ref(false);
 const isDevAssistantRequest = ref(false);
+
+// Voice Agent
+const isProcessingVoice = ref(false);
+const audioInputRef = ref<HTMLInputElement | null>(null);
+const voiceAvailable = ref(false);
 
 // Active conversation tracking
 const activeConversationId = ref<string | null>(null);
@@ -489,11 +514,96 @@ const handleNewConversation = () => {
   console.log('✅ New conversation started. ID:', conversationId.value);
 };
 
+// Voice Agent Functions
+const triggerAudioUpload = () => {
+  audioInputRef.value?.click();
+};
+
+const handleAudioUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+
+  if (!file) return;
+
+  console.log('🎤 Audio file selected:', file.name, file.type, file.size, 'bytes');
+
+  isProcessingVoice.value = true;
+  error.value = '';
+
+  // If no active conversation, create new one
+  if (!activeConversationId.value) {
+    activeConversationId.value = conversationId.value;
+  }
+
+  try {
+    // Add voice message indicator to UI
+    messages.value.push({
+      role: 'user',
+      content: `🎤 Processing audio: ${file.name}...`,
+      timestamp: new Date()
+    });
+    scrollToBottom();
+
+    // Call Voice Agent API
+    const voiceResponse = await VoiceAgentService.processVoiceCommand({
+      audioFile: file,
+      userId: 'user-' + Date.now(),
+      language: 'auto', // Auto-detect or use specific language
+      model: selectedModel.value,
+      temperature: temperature.value,
+      systemPrompt: systemPrompt.value
+    });
+
+    console.log('✅ Voice processing completed:', voiceResponse);
+
+    // Replace loading message with transcription
+    messages.value[messages.value.length - 1] = {
+      role: 'user',
+      content: `🎤 **[Audio Transcription]**\n\n${voiceResponse.transcription}\n\n_Language: ${voiceResponse.language} • Transcription: ${voiceResponse.transcriptionTimeMs}ms_`,
+      timestamp: new Date(voiceResponse.timestamp)
+    };
+
+    // Add LLM response
+    messages.value.push({
+      role: 'assistant',
+      content: voiceResponse.response,
+      timestamp: new Date(voiceResponse.timestamp)
+    });
+
+    scrollToBottom();
+
+    // Refresh sidebar
+    sidebarRef.value?.refresh();
+
+  } catch (err: any) {
+    console.error('❌ Voice processing error:', err);
+    error.value = err.message || 'Voice processing failed';
+
+    // Remove loading message
+    messages.value.pop();
+  } finally {
+    isProcessingVoice.value = false;
+    // Reset file input
+    if (audioInputRef.value) {
+      audioInputRef.value.value = '';
+    }
+  }
+};
+
 onMounted(async () => {
   console.log('OpenRouter Chat initialized with conversation ID:', conversationId.value);
 
   // Check Developer Assistant availability
   await checkAvailability();
+
+  // Check Voice Agent availability
+  try {
+    voiceAvailable.value = await VoiceAgentService.healthCheck();
+    console.log('🎤 Voice Agent available:', voiceAvailable.value);
+  } catch (err) {
+    console.warn('Voice Agent unavailable:', err);
+    voiceAvailable.value = false;
+  }
 });
 </script>
 
@@ -622,4 +732,42 @@ onMounted(async () => {
     }
   }
 }
+
+/* Voice Button Styles */
+.voice-button {
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    background: linear-gradient(135deg, #ccc 0%, #999 100%);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
 </style>
+
